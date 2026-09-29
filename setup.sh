@@ -11,6 +11,12 @@
 #   Copies the kit's .claude/ tree into $HOME/.claude/ on first install,
 #   then substitutes ${KIT_HOOKS_DIR} placeholders to absolute paths.
 #
+# Settings only (re-invocable at any time, installs nothing):
+#   ./setup.sh --settings            # change verification rigor on a live install
+#   ./setup.sh --settings --global
+#   The rigor tier is read AT DISPATCH, so a change here takes effect on the next
+#   run of any skill — no reinstall, and no edit to any skill file.
+#
 # Both modes:
 #   - Substitute ${KIT_HOOKS_DIR} placeholders in settings.json + hooks/*.sh
 #     to the resolved absolute hook directory.
@@ -23,10 +29,12 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # --- 0. Argument parsing ---
 INSTALL_MODE="project"
+SETTINGS_ONLY=0
 EXTRA_ARGS=()
 while [[ $# -gt 0 ]]; do
     case "$1" in
         --global) INSTALL_MODE="global"; shift ;;
+        --settings|--rigor) SETTINGS_ONLY=1; shift ;;
         *) EXTRA_ARGS+=("$1"); shift ;;
     esac
 done
@@ -39,9 +47,89 @@ else
     set --
 fi
 
-echo "=== Claude Code Kit Setup ==="
+if [[ "$SETTINGS_ONLY" == "1" ]]; then
+    echo "=== Q Settings ==="
+else
+    echo "=== Claude Code Kit Setup ==="
+fi
 echo "  Mode: $INSTALL_MODE"
 echo ""
+
+# --- Verification thoroughness (D16), as a function so `--settings` can re-run
+# --- it on a live install without reinstalling anything.
+#
+# Only `thorough` is a VOTE (three checkers that must agree); the rest are one
+# isolated opinion. Every tier still dispatches an isolated checker that is not
+# the producer — that floor is not on the dial, and neither are the fixed
+# pipelines.
+#
+# The answer is STORED, by the same module the skills read at dispatch. It used
+# to be printed as an `export` line for the operator to copy, and nothing read
+# the variable: the question was asked, the answer was recorded nowhere, and
+# every skill went on using the counts written into its own text. Storing it is
+# the whole point — `hooks/rigor.py` is the single reader, and it is consulted
+# when a skill dispatches rather than when this script runs.
+configure_rigor() {
+    local rigor="$KIT_HOOKS_DIR/rigor.py"
+    if [[ ! -f "$rigor" ]]; then
+        echo "Verification rigor: NOT configured — $rigor is missing."
+        echo "  (This kit predates the rigor dial, or the install is incomplete.)"
+        return 0
+    fi
+
+    if [[ -n "${Q_VALIDATION_RIGOR:-}" ]]; then
+        # The environment outranks the stored file by design (a deliberate
+        # per-session override), so writing the file here would be misleading:
+        # it would not take effect while the export is live.
+        echo "Verification rigor: $Q_VALIDATION_RIGOR (from \$Q_VALIDATION_RIGOR,"
+        echo "  which takes precedence over the stored setting — nothing written)"
+        return 0
+    fi
+
+    local tier=""
+    if [[ -n "${Q_RIGOR_TIER:-}" ]]; then
+        tier="$Q_RIGOR_TIER"              # scripted answer, for CI and re-runs
+    elif [[ "${ASSUME_NO:-0}" == "1" ]] || [[ ! -t 0 ]]; then
+        echo "Verification rigor: leaving it at the default ('standard')."
+        echo "  Change it at any time:  ./setup.sh --settings"
+        echo "  or directly:            python3 $rigor set thorough"
+        return 0
+    else
+        echo "How thorough should verification be?"
+        python3 "$rigor" tiers | sed 's/^/  /'
+        echo ""
+        echo "  Current: $(python3 "$rigor" get)"
+        read -r -p "Tier [keep current]: " tier || tier=""
+        if [[ -z "$tier" ]]; then
+            echo "  unchanged."
+            return 0
+        fi
+    fi
+
+    if python3 "$rigor" set "$tier" --set-by "setup.sh"; then
+        :
+    else
+        echo "  not changed — run 'python3 $rigor tiers' for the valid values." >&2
+    fi
+    echo "  Change it again at any time: ./setup.sh --settings"
+}
+
+# --settings installs nothing: resolve the roots, edit the setting, stop.
+if [[ "$SETTINGS_ONLY" == "1" ]]; then
+    if [[ "$INSTALL_MODE" == "global" ]]; then
+        INSTALL_ROOT="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"
+    else
+        INSTALL_ROOT="$SCRIPT_DIR/.claude"
+    fi
+    KIT_HOOKS_DIR="$INSTALL_ROOT/hooks"
+    if [[ ! -d "$INSTALL_ROOT" ]]; then
+        echo "ERROR: no install at $INSTALL_ROOT." >&2
+        echo "       Run ./setup.sh (or ./setup.sh --global) first." >&2
+        exit 2
+    fi
+    configure_rigor
+    exit 0
+fi
 
 # --- 1. Resolve KIT_HOOKS_DIR + INSTALL_ROOT per mode ---
 if [[ "$INSTALL_MODE" == "global" ]]; then
@@ -177,30 +265,7 @@ fi
 echo ""
 
 # --- 4c. Verification thoroughness (D16) ---
-#
-# Only `thorough` is a VOTE (three checkers that must agree); the rest are one
-# isolated opinion. Every tier still spawns an isolated checker that is not the
-# producer — that floor is not on the dial, and neither are the fixed pipelines.
-if [[ -n "${Q_VALIDATION_RIGOR:-}" ]]; then
-    echo "Verification rigor: $Q_VALIDATION_RIGOR (from the environment)"
-elif [[ "${ASSUME_NO:-0}" == "1" ]] || [[ ! -t 0 ]]; then
-    echo "Verification rigor: defaulting to 'standard'. Override with"
-    echo "  export Q_VALIDATION_RIGOR=thorough|standard|light|minimal"
-else
-    echo "How thorough should verification be?"
-    echo "  thorough  3 Sonnet must agree + an Opus advisory   (a vote; highest cost)"
-    echo "  standard  1 Sonnet + an Opus advisory              (default)"
-    echo "  light     a single Opus checker                    (no vote)"
-    echo "  minimal   a single Sonnet checker                  (cheapest that verifies)"
-    read -r -p "Tier [standard]: " TIER || TIER=""
-    TIER="${TIER:-standard}"
-    case "$TIER" in
-        thorough|standard|light|minimal) ;;
-        *) echo "  unknown tier '$TIER' — using 'standard'"; TIER="standard" ;;
-    esac
-    echo "  add this to your shell profile:"
-    echo "    export Q_VALIDATION_RIGOR=$TIER"
-fi
+configure_rigor
 echo ""
 
 # --- 5. Option A: locate projects root + write kit.env ---

@@ -30,12 +30,46 @@ All optional (defaults shown):
 
 | Flag | Default | Description |
 |------|---------|-------------|
-| `--sonnet N` | 3 | Number of Sonnet checkers |
-| `--opus N` | 0 | Number of Opus checkers |
+| `--class C` | (none) | The site class — `gate`, `check` or `fixed`. Resolves the allocation from the configured rigor tier. **This is the form a calling skill uses.** See *Allocation* below. |
+| `--sonnet N` | 3 | Number of Sonnet checkers. An explicit count overrides `--class`. |
+| `--opus N` | 0 | Number of Opus checkers. An explicit count overrides `--class`. |
 | `--rounds N` | 2 | Max convergence rounds |
 | `--against TEXT` | (none) | Validation target context. Checker precedence: `--against` > KL sources (Step 2b) > codebase |
 
 Minimum 1 checker total (`--sonnet + --opus ≥ 1`).
+
+---
+
+## Allocation — read the dial, do not name counts
+
+A caller passes a **site class**, not a checker count, because the right count is
+the adopter's cost/confidence setting and not a property of the calling skill.
+Resolve it at dispatch — one line, and the flags it prints are what you pass:
+
+```bash
+python3 ${KIT_HOOKS_DIR}/rigor.py for gate
+```
+
+| class | when |
+|---|---|
+| `gate` | the verdict BLOCKS — the work does not proceed on a DISCREPANCY |
+| `check` | routine verification — a discrepancy causes a revision, not a stop |
+| `fixed` | a canon-locked pipeline (plan gates, research FC, KL extraction) — returns the canon 3 Sonnet at every tier, so asking the dial here is safe |
+
+Resolution happens **at dispatch, never at install**: the operator can change the
+tier at any time (`rigor.py set thorough`) and the next run follows it, with no
+reinstall and no edit to any skill. `rigor.py show` prints the active tier, where
+it came from, and what each class currently resolves to.
+
+Two things the dial never does, at any tier: it never drops below one **isolated**
+checker that is not the producer (`code_first_architecture.md` —
+producer-never-verifies is not a setting), and it never touches the fixed
+pipelines (`factcheck-convergence.md` §1). At `light` and `minimal` there is one
+binding checker, so the result is one isolated opinion rather than a vote — say so
+when reporting a verdict at those tiers rather than implying a consensus.
+
+An operator naming `--sonnet`/`--opus` explicitly always wins over the dial; the
+dial governs what the skills do on their own.
 
 ---
 

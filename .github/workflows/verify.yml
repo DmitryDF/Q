@@ -69,6 +69,22 @@ jobs:
             fi
           done
 
+      - name: The rigor dial — both floors, and no skill naming counts inline
+        run: |
+          # Guarded on presence: the dial lands at push 4, and this workflow runs
+          # from push 0. A missing module is "not shipped yet", not a failure.
+          if [ -f .claude/hooks/rigor.py ]; then
+            # selftest: every allocation is legal for the engine, every tier
+            # still dispatches a binding checker, the fixed pipelines do not move.
+            python3 .claude/hooks/rigor.py selftest
+            # conformance: the Layer-1 half of a Layer-3 promise. A skill that
+            # goes back to naming its own checker counts fails the push — which
+            # is the only thing that keeps the install-time setting honest.
+            python3 .claude/hooks/rigor.py conformance .claude
+          else
+            echo "rigor.py not in this release yet — skipping"
+          fi
+
       - name: Leak gate — author identity and private strings
         run: |
           # Narrowed per P0.16: `/Users/` alone matches GENERIC regexes inside guard
@@ -132,3 +148,20 @@ jobs:
             && { echo "setup.sh wrote to CLAUDE.md without consent"; exit 1; }
           test -d /tmp/q-sandbox/skills || { echo "setup.sh installed nothing"; exit 1; }
           echo "install smoke OK — files landed, CLAUDE.md untouched"
+
+      - name: Settings smoke — the rigor tier is changeable after install
+        run: |
+          # The operator's second requirement: change the tier on a LIVE install,
+          # with no reinstall. If this ever stops working the dial is back to
+          # being an install-time-only choice, which is most of the way back to
+          # being a claim.
+          if [ ! -f /tmp/q-sandbox/hooks/rigor.py ]; then
+            echo "rigor.py not in this release yet — skipping"; exit 0
+          fi
+          Q_RIGOR_TIER=minimal CLAUDE_CONFIG_DIR=/tmp/q-sandbox ./setup.sh --settings --global
+          grep -q '"tier": "minimal"' /tmp/q-sandbox/q-rigor.json \
+            || { echo "--settings did not store the tier"; exit 1; }
+          got="$(python3 /tmp/q-sandbox/hooks/rigor.py for gate)"
+          test "$got" = "--sonnet 1" \
+            || { echo "gate resolved to '$got', not the minimal tier's allocation"; exit 1; }
+          echo "settings smoke OK — tier stored and read back at dispatch"

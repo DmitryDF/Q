@@ -42,12 +42,28 @@ All optional (defaults shown):
 | `--embed` | off | Suppress the `(a)/(b)/(c)` handoff and append a structured YAML summary block instead. Used when another skill invokes `/challenge` and consumes the output programmatically. Purely additive — default behaviour is unchanged when the flag is absent. |
 | `--prompt-append "<focus>"` | unset | Append the focus string to the standard `/challenge` mode-specific prompt so the critique targets the named axis (e.g., `"realism, over-commitment, override-soundness, trade-off-honesty"` in tactical use; `"strategic coherence"` in strategy use). Backwards-compatible — absent flag = today's behaviour (no append, standard mode-specific prompt unchanged). Length-bounded 5–200 characters; values outside the bound are rejected (Edge Case E10). |
 
-**Per-mode defaults:**
+**Per-mode defaults** — one round each, Opus critics, and the authored agent count below:
 
-- `challenge_concept` — `--sonnet 0 --opus 1 --rounds 1` (one bounded Opus critique)
-- `surface_oqs` — `--sonnet 0 --opus 2 --rounds 1` (two Opus agents to widen the open-question set)
+- `challenge_concept` — **one** bounded Opus critique
+- `surface_oqs` — **two** Opus agents, specifically to widen the open-question set
 
-Minimum 1 proposer total (`--sonnet + --opus ≥ 1`). `--rounds 0` is rejected (floor at 1).
+Minimum 1 critic total. `--rounds 0` is rejected (floor at 1).
+
+**The critic count is capped by the rigor dial.** Critics *generate* — they produce
+objections rather than verdicts — so the dial is a ceiling on the panel, not a
+replacement for the authored count. Resolve it at dispatch, passing the mode's
+authored number:
+
+```bash
+python3 ${KIT_HOOKS_DIR}/rigor.py cap 2
+```
+
+At `thorough` and `standard` both modes get their authored count; at `light` and
+`minimal` a `surface_oqs` panel narrows to one agent, which surfaces fewer
+questions — that is the cost the operator chose, and the run should say so rather
+than presenting a one-agent sweep as the full set. An explicit `--opus N` from the
+operator overrides both the mode default and the cap. Tiers and how to change
+them: the *Allocation* section of `/double-check`.
 
 ---
 
@@ -286,7 +302,11 @@ Absent `--prompt-append`, the same invocation produces the unfocused default `ch
 
 ### Example 4 — Embedded invocation from another skill
 
-**Caller (e.g. `/clarification` step 5):** `/challenge --mode surface_oqs --embed --target ~/.claude/state/clarification/<sid>/idea-and-own-words.md --opus 2 --rounds 1`
+**Caller (e.g. `/clarification` step 5):** `/challenge --mode surface_oqs --embed --target ~/.claude/state/clarification/<sid>/idea-and-own-words.md --rounds 1`
+
+The caller names no agent count: `surface_oqs` carries its own authored default and
+the dial caps it. A caller that restated the number would pin the panel behind the
+operator's setting.
 
 `/challenge` dispatches two Opus critics, deduplicates, and returns the OQ blocks per critic followed by the YAML summary — no `(a)/(b)/(c)` handoff. The caller parses the summary, persists `artifact_path` in its own state, and decides the next step itself.
 

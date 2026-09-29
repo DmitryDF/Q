@@ -36,7 +36,15 @@ All optional (defaults shown):
 | `--opus N` | 1 | Number of Opus proposer agents |
 | `--rounds N` | 1 | Convergence rounds (≥ 1) |
 
-Default: `--sonnet 0 --opus 1 --rounds 1` (single bounded Opus pass, no convergence loop). Minimum 1 proposer total (`--sonnet + --opus ≥ 1`). `--rounds 0` is rejected (floor at 1). **No `--mode` flag at v1.**
+Default: one bounded Opus proposer, one round — a single pass, no convergence loop. Minimum 1 proposer total. `--rounds 0` is rejected (floor at 1). **No `--mode` flag at v1.**
+
+**The proposer count is capped by the rigor dial.** Proposers *generate*; they do not verify, so the dial is a ceiling on the panel rather than a replacement for it — the authored default of one stays one at every tier. Resolve the ceiling at dispatch before spawning:
+
+```bash
+python3 ${KIT_HOOKS_DIR}/rigor.py cap 1
+```
+
+Pass the count it prints. An operator naming `--opus N` explicitly overrides both the default and the cap; the dial governs what this skill does on its own. See the *Allocation* section of `/double-check` for the tiers and how to change them.
 
 ---
 
@@ -100,7 +108,7 @@ Return the structured block only. Do not soften, do not hedge beyond the concern
 
 **Step 4 — Synthesize (only when total proposers > 1)**
 
-- **One proposer** (`--sonnet 0 --opus 1`, the default): return that proposer's block verbatim. Skip synthesis.
+- **One proposer** (the default, and what every tier resolves to unless the operator asked for more): return that proposer's block verbatim. Skip synthesis.
 - **Multiple proposers in one round** (`--sonnet + --opus > 1`, `--rounds 1`): the main session runs a synthesizer pass — read all N recommendation blocks and pick-or-merge into a single canonical recommendation. Record which proposers it drew from inline (e.g. `synthesized from: proposer 1, proposer 3`).
 - **`--rounds N>1`:** between rounds, feed the prior-round synthesized recommendation as the seed to the next round's proposer prompts (append: `prior round produced: [synthesized recommendation]`). If a synthesizer can no longer reduce variance after `--rounds`, ESCALATE — surface all candidate recommendations verbatim, grouped by proposer. Do not swallow.
 
@@ -174,7 +182,7 @@ Inline coaching grounding — verbatim quotes:
 
 ### Example 2 — Multi-proposer with synthesizer pass
 
-**User:** `/recommend --opus 3 --rounds 2`
+**User:** `/recommend --opus 3 --rounds 2` <!-- rigor-ok: a worked example of an explicit operator override, which outranks the dial by design -->
 
 `/recommend` dispatches three Opus proposers in Round 1 → main-session synthesizer pass picks-or-merges into one block, records which proposers it drew from → Round 2 seeds three fresh Opus proposers with the synthesized block → synthesizer pass again → final block emitted, or ESCALATE with all candidates surfaced if variance did not reduce.
 
