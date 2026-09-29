@@ -62,6 +62,7 @@ hard-fails if it names a different one.
 ## Layout
 
 - Repo scaffold, licence, install instructions and CI.
+- Bash sanitisation and config-path guards.
 
 ---
 

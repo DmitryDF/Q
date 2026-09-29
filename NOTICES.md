@@ -7,7 +7,9 @@ remains the property of its authors and is reproduced under the right of
 quotation. If you redistribute or build on this repo, that carve-out travels
 with it.
 
-_No third-party book quotations are present in the tree at this release level — the rules files that carry them have not shipped yet. The carve-out above is stated because it travels with the licence, not because anything is quoted here today._
+Q's rules and skills are grounded in published work. Where a gate exists because a particular author argued for it, the rules file says so and quotes the sentence that makes the argument — so a reader can check the reasoning rather than take the gate on faith.
+
+Each excerpt is attributed **inline, where it appears** — author and chapter, next to the rule it explains. That is where a reader can check it, and it is the attribution the right of quotation asks for. This file does not repeat those attributions as an index; read them where they are used.
 
 Ideas, methods and frameworks are not themselves copyrightable — only their particular
 expression is. Q implements methods from published work; it does not reprint it.
@@ -35,7 +37,9 @@ weaker without the books; the skills say so.
 
 ## Anthropic documentation
 
-_`rules/prompt-engineering.md` is not in the tree at this level, so no verbatim Anthropic prompt templates are present._
+`rules/prompt-engineering.md` is a synthesis of Anthropic's public prompt-engineering documentation. It reproduces fenced prompt-template blocks verbatim alongside quoted guidance sentences. Its sources are listed with URLs at the top of that file, and each section carries an `(S1)`-style marker naming which one it came from.
+
+These are published prompt snippets, offered by Anthropic for use.
 
 Several other rules files cite Anthropic engineering posts and documentation by URL
 with short quotations: *Building Effective Agents*, *Writing Effective Tools for

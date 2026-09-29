@@ -52,7 +52,76 @@
     ],
     "defaultMode": "auto"
   },
-  "hooks": {},
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${KIT_HOOKS_DIR}/guard-config-paths.sh"
+          }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${KIT_HOOKS_DIR}/fix-backslash-paths.sh"
+          }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${KIT_HOOKS_DIR}/sanitize-bash.sh"
+          }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${KIT_HOOKS_DIR}/check-verifier-isolation.sh pre"
+          }
+        ]
+      },
+      {
+        "matcher": "Agent",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${KIT_HOOKS_DIR}/inject-subagent-preamble.sh"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${KIT_HOOKS_DIR}/check-verifier-isolation.sh post"
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${KIT_HOOKS_DIR}/cleanup-stale-verifier-isolation.sh"
+          }
+        ]
+      }
+    ]
+  },
   "extraKnownMarketplaces": {
     "claude-plugins-official": {
       "source": {
