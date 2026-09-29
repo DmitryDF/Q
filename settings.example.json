@@ -63,6 +63,14 @@
           {
             "type": "command",
             "command": "python3 ${KIT_HOOKS_DIR}/todo.py"
+          },
+          {
+            "type": "command",
+            "command": "${KIT_HOOKS_DIR}/clarification-nudge.sh"
+          },
+          {
+            "type": "command",
+            "command": "${KIT_HOOKS_DIR}/refresh-topic-locks.sh"
           }
         ]
       }
@@ -119,6 +127,19 @@
           {
             "type": "command",
             "command": "${KIT_HOOKS_DIR}/inject-subagent-preamble.sh"
+          },
+          {
+            "type": "command",
+            "command": "${KIT_HOOKS_DIR}/check-skill-marker.sh"
+          }
+        ]
+      },
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${KIT_HOOKS_DIR}/check-discovery-lock.sh"
           }
         ]
       }
@@ -129,6 +150,14 @@
           {
             "type": "command",
             "command": "${KIT_HOOKS_DIR}/log-output.sh"
+          },
+          {
+            "type": "command",
+            "command": "python3 ${KIT_HOOKS_DIR}/discovery-present-gate.py"
+          },
+          {
+            "type": "command",
+            "command": "${KIT_HOOKS_DIR}/check-phase-gate.sh"
           }
         ]
       }
@@ -157,7 +186,34 @@
         "hooks": [
           {
             "type": "command",
+            "command": "python3 ${KIT_HOOKS_DIR}/clarification_anchor.py"
+          }
+        ]
+      },
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
             "command": "${KIT_HOOKS_DIR}/track-session-files.sh"
+          }
+        ]
+      },
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${KIT_HOOKS_DIR}/verify-thought-file.sh"
+          }
+        ]
+      },
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${KIT_HOOKS_DIR}/factcheck-thought-file.sh"
           }
         ]
       },
@@ -181,6 +237,20 @@
           {
             "type": "command",
             "command": "${KIT_HOOKS_DIR}/cleanup-stale-verifier-isolation.sh"
+          },
+          {
+            "type": "command",
+            "command": "${KIT_HOOKS_DIR}/sweep-dead-locks.sh"
+          }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${KIT_HOOKS_DIR}/release-session-locks.sh"
           }
         ]
       }
