@@ -25,7 +25,7 @@ port automatically is the enforcement: the gates are hook registrations, and hoo
 config is proprietary per vendor. On Claude Code you get the methodology and the
 gates. Elsewhere you get the methodology, and the gates need an adapter.
 
-As of today the set ships **7 skills** for getting a bounded next move, stress-testing an idea, independent verification, framing work before you start it, session orientation, turning a solution into an outcome, and choosing a metric that holds up. More are
+As of today the set ships **8 skills** for getting a bounded next move, stress-testing an idea, independent verification, framing work before you start it, session orientation, turning a solution into an outcome, choosing a metric that holds up, and evidence-based research. More are
 coming for vibecoding. Soon.
 
 **One honest caveat.** Some of this may behave differently on your machine than on
@@ -67,6 +67,7 @@ hard-fails if it names a different one.
 - `/session-start` — orientation at the top of a session.
 - `/outcome-framing` — turns a solution plus a diagnosis into a Cagan-framed outcome.
 - `/lean-analytics-metrics` — gates a candidate OMTM against the four good-metric properties.
+- `/research` — scope framing and approval, evidence-based findings, fact-check, claims register.
 
 **Where the four ClaSPEL phases stand in this release:**
 
@@ -75,7 +76,7 @@ hard-fails if it names a different one.
 - **Plan** (`/plan`) — not yet
 - **Execution** (`/execute-plan`) — not yet
 
-7 of 21 skills are here so far. The phases marked *not yet* land in later pushes — this README is generated from what is actually in the tree, so it will not describe a skill before it exists.
+8 of 21 skills are here so far. The phases marked *not yet* land in later pushes — this README is generated from what is actually in the tree, so it will not describe a skill before it exists.
 
 ## Layout
 
