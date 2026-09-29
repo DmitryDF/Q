@@ -1,0 +1,65 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(gh repo clone:*)",
+      "Bash(git clone:*)",
+      "Bash(curl:*)",
+      "Bash(gh auth:*)",
+      "Bash(git fetch:*)",
+      "Bash(git remote set-url:*)",
+      "Bash(grep:*)",
+      "Bash(wc:*)",
+      "Bash(pip3 install:*)",
+      "Bash(pip3 show:*)",
+      "Bash(ls:*)",
+      "Bash(sqlite3:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(git -C * add *)",
+      "Bash(git -C * commit *)",
+      "Bash(git -C * push *)",
+      "Bash(cd * && git *)",
+      "Bash(cd * && grep *)",
+      "Bash(cd * && rg *)",
+      "Bash(cd * && cat *)",
+      "Bash(cd * && head *)",
+      "Bash(cd * && python*)",
+      "Bash(for *)",
+      "WebSearch",
+      "Bash(xargs cat:*)",
+      "Bash(osascript:*)",
+      "Bash(find:*)",
+      "Bash(pdftotext:*)",
+      "Bash(head:*)",
+      "Bash(find .:*)",
+      "Bash(cd:*)",
+      "Bash(brctl download:*)",
+      "WebFetch(domain:www.anthropic.com)",
+      "Skill(close)",
+      "Bash(claude:*)",
+      "Bash(test:*)",
+      "WebFetch(domain:docs.anthropic.com)",
+      "Bash(pandoc:*)",
+      "Bash(command:*)",
+      "Bash(unzip:*)",
+      "Bash(mkdir:*)",
+      "Bash(cp:*)",
+      "Bash(mv:*)",
+      "WebFetch(domain:claude.com)",
+      "Bash(gh api:*)",
+      "Bash(claude plugin:*)"
+    ],
+    "defaultMode": "auto"
+  },
+  "hooks": {},
+  "extraKnownMarketplaces": {
+    "claude-plugins-official": {
+      "source": {
+        "source": "git",
+        "url": "https://github.com/anthropics/claude-plugins-official.git"
+      }
+    }
+  },
+  "autoUpdatesChannel": "stable"
+}

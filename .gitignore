@@ -1,0 +1,19 @@
+# Session logs (created per-session, not tracked)
+.claude/logs/
+.claude/plans/
+.claude/settings.local.json
+.claude/session-state/
+.claude/state/
+.claude/statsig/
+.claude/shell-snapshots/
+
+# Diary entries (personal session logs)
+Diary/*.md
+!Diary/README.md
+
+# Thoughts (personal staging)
+Thoughts/*.md
+!Thoughts/README.md
+
+# OS files
+.DS_Store

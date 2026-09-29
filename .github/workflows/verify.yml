@@ -1,0 +1,114 @@
+# Q — per-push verification.
+#
+# Runs on EVERY push, not only at the end (O3). Once the repo is public a leak is
+# permanent — forks, mirrors, and GitHub's cache — so the scan cannot wait for a
+# final checklist. In a private repo you can rewrite history before flipping; after
+# flipping you cannot.
+#
+# The pytest suite is deliberately NOT here until the tests push lands (D9): it
+# asserts whole-tree state, so it cannot pass on a partial tree. `verify_kit` plus
+# the smoke plus the leak gate are what hold the earlier pushes.
+name: verify
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Full history: the author-identity check below reads every commit, and a
+          # shallow clone would silently pass by seeing only the newest one.
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install the hard dependency
+        run: |
+          python3 -m pip install --quiet --upgrade pip
+          python3 -m pip install --quiet pyyaml
+
+      - name: Structure
+        run: |
+          test -f README.md   || { echo "MISSING README.md"; exit 1; }
+          test -f LICENSE     || { echo "MISSING LICENSE"; exit 1; }
+          test -f NOTICES.md  || { echo "MISSING NOTICES.md — the MIT grant needs its carve-out inventory"; exit 1; }
+          test -f INSTALL.md  || { echo "MISSING INSTALL.md"; exit 1; }
+          test -f setup.sh    || { echo "MISSING setup.sh"; exit 1; }
+          # A shipped CLAUDE.md is a FAILURE, not an omission (O1/A7): an adopter
+          # already has one and overwriting it is hostile.
+          test ! -f CLAUDE.md || { echo "CLAUDE.md must NOT ship — setup.sh asks instead"; exit 1; }
+
+      - name: Every gate is syntactically sound
+        run: |
+          shopt -s nullglob
+          fail=0
+          for f in .claude/hooks/*.sh; do
+            bash -n "$f" || { echo "syntax error: $f"; fail=1; }
+          done
+          exit $fail
+
+      - name: Engines import — and without the optional extras
+        run: |
+          shopt -s nullglob
+          cd .claude/hooks
+          for m in _factcheck_engine bookkeeping_invariant; do
+            if [ -f "$m.py" ]; then
+              python3 -c "import sys; sys.path.insert(0,'.'); import $m" \
+                || { echo "import failed: $m"; exit 1; }
+            fi
+          done
+
+      - name: Leak gate — author identity and private strings
+        run: |
+          # Narrowed per P0.16: `/Users/` alone matches two GENERIC regexes inside
+          # guard code that expose nobody, and a gate that can never go green gets
+          # disabled. Attribution surfaces may name the author; .claude/** may not.
+          fail=0
+          if grep -rniE --exclude-dir=.git \
+               '/Users/<you>|private_project|chezmoi|private_script|private_source' . ; then
+            echo "::error::private strings found"; fail=1
+          fi
+          if grep -rnE --exclude-dir=.git 'Knowledge_Base|ExampleCo/|EMPLOYER/' . ; then
+            echo "::error::private directory names found"; fail=1
+          fi
+          if grep -rniE --exclude-dir=.git --exclude=README.md --exclude=NOTICES.md \
+               --exclude=LICENSE --exclude=INSTALL.md '\bmitya\b|\bfrikh|DmitryDF' . ; then
+            echo "::error::author identifiers outside the attribution surfaces"; fail=1
+          fi
+          exit $fail
+
+      - name: Commit identity (D11) — the one leak no content scan can see
+        run: |
+          # Irreversible once public, so it is checked on every push rather than once.
+          bad="$(git log --format='%an <%ae>' | sort -u | grep -v 'users.noreply.github.com' || true)"
+          if [ -n "$bad" ]; then
+            echo "::error::commits carry a non-noreply identity:"; echo "$bad"; exit 1
+          fi
+
+      - name: Secret scan
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Install smoke — into a sandbox, never the runner's real config
+        run: |
+          mkdir -p /tmp/q-sandbox
+          printf '# pre-existing user rules\n' > /tmp/q-sandbox/CLAUDE.md
+          ASSUME_NO=1 CLAUDE_CONFIG_DIR=/tmp/q-sandbox ./setup.sh --global
+          # ASSUME_NO: the consent step must not block CI on stdin, and must not
+          # write to a file it was not given permission to touch.
+          grep -q '@rules/' /tmp/q-sandbox/CLAUDE.md \
+            && { echo "setup.sh wrote to CLAUDE.md without consent"; exit 1; }
+          test -d /tmp/q-sandbox/skills || { echo "setup.sh installed nothing"; exit 1; }
+          echo "install smoke OK — files landed, CLAUDE.md untouched"

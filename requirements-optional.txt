@@ -1,0 +1,3 @@
+# Optional. The engine guards both and degrades cleanly without them.
+pydantic
+tiktoken
