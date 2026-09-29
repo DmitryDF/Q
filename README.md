@@ -25,7 +25,7 @@ port automatically is the enforcement: the gates are hook registrations, and hoo
 config is proprietary per vendor. On Claude Code you get the methodology and the
 gates. Elsewhere you get the methodology, and the gates need an adapter.
 
-As of today the set ships **1 skills** for getting a bounded next move. More are
+As of today the set ships **2 skills** for getting a bounded next move and stress-testing an idea. More are
 coming for vibecoding. Soon.
 
 **One honest caveat.** Some of this may behave differently on your machine than on
@@ -62,6 +62,7 @@ hard-fails if it names a different one.
 ## Included Skills
 
 - `/recommend` — one bounded forward move, with trade-offs and stated concerns.
+- `/challenge` — stress-tests an artifact against agree-bias.
 
 **Where the four ClaSPEL phases stand in this release:**
 
@@ -70,7 +71,7 @@ hard-fails if it names a different one.
 - **Plan** (`/plan`) — not yet
 - **Execution** (`/execute-plan`) — not yet
 
-1 of 21 skills are here so far. The phases marked *not yet* land in later pushes — this README is generated from what is actually in the tree, so it will not describe a skill before it exists.
+2 of 21 skills are here so far. The phases marked *not yet* land in later pushes — this README is generated from what is actually in the tree, so it will not describe a skill before it exists.
 
 ## Layout
 
