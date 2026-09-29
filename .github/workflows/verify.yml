@@ -71,19 +71,39 @@ jobs:
 
       - name: Leak gate — author identity and private strings
         run: |
-          # Narrowed per P0.16: `/Users/` alone matches two GENERIC regexes inside
-          # guard code that expose nobody, and a gate that can never go green gets
-          # disabled. Attribution surfaces may name the author; .claude/** may not.
+          # Narrowed per P0.16: `/Users/` alone matches GENERIC regexes inside guard
+          # code that expose nobody, and a gate that can never go green gets disabled.
+          #
+          # TWO EXCLUSION SETS, for two different reasons:
+          #
+          #   attribution surfaces  README / NOTICES / LICENSE / INSTALL may name the
+          #                         author — NOTICES exists to say "original work by
+          #                         <author>". They may NOT name private projects, so
+          #                         they are excluded only from the identity grep.
+          #
+          #   gate files            A FILE WHOSE JOB IS TO DETECT A STRING MUST
+          #                         CONTAIN THAT STRING. This workflow carries the
+          #                         patterns it greps for; verify_kit.py describes its
+          #                         own author-token check. Both are excluded from all
+          #                         three greps, or the gate can never pass.
+          #
+          # The authority for this list is LEAK_ALLOWLIST in the release tool's
+          # q_git.py. These two implementations can drift; if you change one, change
+          # the other. (Known duplication — the tool is not shipped in this kit.)
+          GATE_FILES=(--exclude=verify.yml --exclude=verify_kit.py)
+          ATTRIB=(--exclude=README.md --exclude=NOTICES.md
+                  --exclude=LICENSE --exclude=INSTALL.md)
           fail=0
-          if grep -rniE --exclude-dir=.git \
+          if grep -rniE --exclude-dir=.git "${GATE_FILES[@]}" \
                '/Users/<you>|private_project|chezmoi|private_script|private_source' . ; then
             echo "::error::private strings found"; fail=1
           fi
-          if grep -rnE --exclude-dir=.git 'Knowledge_Base|ExampleCo/|EMPLOYER/' . ; then
+          if grep -rnE --exclude-dir=.git "${GATE_FILES[@]}" \
+               'Knowledge_Base|ExampleCo/|EMPLOYER/' . ; then
             echo "::error::private directory names found"; fail=1
           fi
-          if grep -rniE --exclude-dir=.git --exclude=README.md --exclude=NOTICES.md \
-               --exclude=LICENSE --exclude=INSTALL.md '\bmitya\b|\bfrikh|DmitryDF' . ; then
+          if grep -rniE --exclude-dir=.git "${GATE_FILES[@]}" "${ATTRIB[@]}" \
+               '\bmitya\b|\bfrikh|DmitryDF' . ; then
             echo "::error::author identifiers outside the attribution surfaces"; fail=1
           fi
           exit $fail
