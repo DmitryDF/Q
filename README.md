@@ -83,6 +83,7 @@ hard-fails if it names a different one.
 - The fact-check engine, the claim seam, and the rigor dial the skills resolve their checker allocation from.
 - The TODO surface and the bookkeeping rules it obeys — the two-surface model, the slug grammar, and the git working model.
 - `/work-frame-and-create-todo` — the framing gate on that surface: Problem, Context, Guiding policy, Master plan, or no TODO gets created.
+- Session logging.
 
 ---
 

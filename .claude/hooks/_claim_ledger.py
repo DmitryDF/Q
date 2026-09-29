@@ -90,6 +90,59 @@ class ClaimLedger:
                 seen.append(cid)
         return seen
 
+    def texts_for_source(self, path) -> set:
+        """Every non-retracted claim's TEXT anchored to the same file as `path`.
+
+        Content dedup for `research_pipeline.record_finding` (S6 round 2, MAJOR
+        1): the recorder writes a finding straight to disk at landing time,
+        before the engine's `_append_research_frontmatter` prepends its
+        frontmatter block above the findings (which it does on every
+        fact-checked report) — a shift the harvest's LINE-keyed `_key` dedup
+        does not survive. Keying on TEXT instead of a line-numbered locator
+        survives the shift: a claim this ledger already holds for the file is
+        never lifted a second time under its new line number.
+
+        Folds this ledger's events per `claim_id` (latest event wins, same rule
+        as `current_state`) and keeps only claims whose LATEST status is not
+        `"retracted"` and whose anchor is a `local_file` anchor. The anchor's
+        path half (the locator up to its FINAL `:`) is resolved via
+        `os.path.realpath` before comparison, so two spellings of one file —
+        e.g. through a symlinked directory — match the same target.
+        """
+        try:
+            target = os.path.realpath(str(path))
+        except OSError:
+            target = str(path)
+        latest = {}
+        for e in self._events():
+            cid = e.get("claim_id")
+            if cid:
+                latest[cid] = e            # latest event wins (append order)
+        out = set()
+        for state in latest.values():
+            if state.get("status") == "retracted":
+                continue
+            anchor = state.get("anchor")
+            if not isinstance(anchor, dict) or anchor.get("source_type") != "local_file":
+                continue
+            locator = anchor.get("locator")
+            if not isinstance(locator, str):
+                continue
+            # locator = "<path>:<line>" — split on the FINAL ':' so a path that
+            # itself contains ':' is not mis-split.
+            anchor_path, sep, _line = locator.rpartition(":")
+            if not sep:
+                continue
+            try:
+                anchor_real = os.path.realpath(anchor_path)
+            except OSError:
+                anchor_real = anchor_path
+            if anchor_real == target:
+                text = state.get("text")
+                if isinstance(text, str):
+                    out.add(text)
+        return out
+
     # -- writes (append-only, flushed) --------------------------------------
     def _append(self, events: list) -> None:
         """Append a batch of event dicts in ONE write (batched one-write-per-run)."""

@@ -72,10 +72,26 @@ class EvidenceRegister:
 
     # -- ensure_exists (reuses the claims_registry.ensure_exists() convention) --
     def ensure_exists(self) -> bool:
-        if self._path.exists():
+        """Create the register skeleton if absent. Returns True iff THIS call created it.
+
+        MINOR 10 (round 2): the create is now EXCLUSIVE (`open(path, "x", ...)`),
+        never check-then-write. The old `if self._path.exists(): return False`
+        guard followed by a plain `write_text` was check-then-TRUNCATE: two
+        concurrent first-callers can both pass the existence check (both see the
+        file absent), and the SECOND writer's `write_text` then silently
+        discards whatever the first writer had already appended — the same
+        race `claims_registry.ensure_exists` (MAJOR 4a) was hardened against,
+        reproduced here in this register's own, separate `ensure_exists`.
+        `"x"` mode makes the loser of that race fail with `FileExistsError`
+        (caught below) instead of truncating, and that failure reads exactly
+        like "the file was already there": `False`.
+        """
+        try:
+            with open(self._path, "x", encoding="utf-8") as fh:
+                fh.write(_TEMPLATE.format(topic=self._topic))
+            return True
+        except FileExistsError:
             return False
-        self._path.write_text(_TEMPLATE.format(topic=self._topic), encoding="utf-8")
-        return True
 
     # -- add / persist (locators + state, not content) -----------------------
     def add(self, claim: Claim, state: ClaimState) -> None:

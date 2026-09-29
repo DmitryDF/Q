@@ -58,6 +58,10 @@
         "hooks": [
           {
             "type": "command",
+            "command": "${KIT_HOOKS_DIR}/log-prompt.sh"
+          },
+          {
+            "type": "command",
             "command": "python3 ${KIT_HOOKS_DIR}/todo.py"
           }
         ]
@@ -119,6 +123,16 @@
         ]
       }
     ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${KIT_HOOKS_DIR}/log-output.sh"
+          }
+        ]
+      }
+    ],
     "PostToolUse": [
       {
         "matcher": "Write|Edit|Bash",
@@ -139,6 +153,15 @@
         ]
       },
       {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${KIT_HOOKS_DIR}/track-session-files.sh"
+          }
+        ]
+      },
+      {
         "matcher": "Bash",
         "hooks": [
           {
@@ -153,7 +176,21 @@
         "hooks": [
           {
             "type": "command",
+            "command": "${KIT_HOOKS_DIR}/snapshot-git-status.sh"
+          },
+          {
+            "type": "command",
             "command": "${KIT_HOOKS_DIR}/cleanup-stale-verifier-isolation.sh"
+          }
+        ]
+      }
+    ],
+    "PreCompact": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${KIT_HOOKS_DIR}/pre-compact-save.sh"
           }
         ]
       }
