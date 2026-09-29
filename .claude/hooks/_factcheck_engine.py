@@ -7480,14 +7480,24 @@ def factcheck_run(
     # run. (kl_extraction routes through aggregate_kl_extraction_round and uses
     # evidence files, not _CLAIMS — out of scope here by design.)
     #
-    # research-entry-point-enforcement S6 (finding 17): this block used to sit
-    # AFTER the "No active topic" raise below, so a research file fact-checked
-    # from a session bound to no topic never got its register — creation was
-    # gated on a binding it does not use (it reads only `kind` and `draft_path`).
-    # It now runs first. The raise itself stays: the fact-check run DOES need a
-    # topic directory for its round markers, and that is a separate obligation
-    # (finding 30, owned by a later slice).
-    if kind in ("research", "thought"):
+    # research-entry-point-enforcement S6 (finding 17): for the `research`
+    # kind this now runs BEFORE the "No active topic" raise below, so a
+    # research file fact-checked from a session bound to no topic still gets
+    # its register — creation was gated on a binding it does not use (it
+    # reads only `kind` and `draft_path`). The raise itself stays: the
+    # fact-check run DOES need a topic directory for its round markers, and
+    # that is a separate obligation (finding 30, owned by a later slice).
+    #
+    # MINOR 14 (S6 FIXER review): the SAME block also runs for the `thought`
+    # kind, and moving its call site unconditionally to "before the raise"
+    # created a NEW defect the review caught — an unbound `thought`-kind
+    # session would create a register and then still raise, where before it
+    # created nothing on that path. Wrapped in a local function so the body
+    # (and, load-bearing, AD15's `raw=(kind != "research")` call) exists at
+    # exactly ONE site, called from TWO places: before the raise for
+    # `research` (finding 17's fix), and after topic resolution — this
+    # block's ORIGINAL position — for `thought` (this fix).
+    def _create_claims_register_for_this_draft():
         try:
             import claims_registry as _cr
             _dir = os.path.dirname(os.path.abspath(str(draft_path)))
@@ -7516,6 +7526,9 @@ def factcheck_run(
         except Exception:
             pass
 
+    if kind == "research":
+        _create_claims_register_for_this_draft()
+
     if proj is None or topic is None:
         resolver = _proj_topic_resolver if _proj_topic_resolver is not None else _resolve_topic_default
         _proj, _topic, state = resolver(session_id)
@@ -7534,6 +7547,14 @@ def factcheck_run(
             proj = _proj
         if topic is None:
             topic = _topic
+
+    # MINOR 14: the `thought` kind creates its register HERE — after topic
+    # resolution succeeds, this block's position before the S6 relocation —
+    # so an unbound `thought`-kind session raises above with no register
+    # created, exactly as it did before finding 17's fix moved the `research`
+    # arm earlier.
+    if kind == "thought":
+        _create_claims_register_for_this_draft()
 
     # research-fc cycle namespacing (research-fc-cycle-namespacing plan, 2026-07-28).
     # Make the marker/round-count home per-cycle for a NON-default research cycle so the

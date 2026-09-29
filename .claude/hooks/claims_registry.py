@@ -288,8 +288,18 @@ def register_address(research_file_path) -> RegisterAddress:
     (2) no address can be derived (an empty or unnameable basename); and (3)
     `claims_path` → `_assert_inside` finds that `<slug>_CLAIMS.md` already
     exists as a symlink resolving outside the directory — the containment
-    check, not a naming failure. The one production
-    call site (`_claim_harvest_trigger._topic_paths`) treats any of these as "no
+    check, not a naming failure.
+
+    *(Corrected 2026-09-30, research-entry-point-enforcement S6 FIXER review
+    — this used to claim `_claim_harvest_trigger._topic_paths` was "the one
+    production call site". It was already one of at least two by S6 —
+    `ensure_for_research_file` is the other, and is itself called from
+    `research_pipeline._record_register_entry` — and the S6 recorder
+    (`research_pipeline.record_finding`) now also calls this function
+    directly, to derive the register's own lock key before writing to it. The
+    singular claim is retired rather than repeated.)*
+
+    `_claim_harvest_trigger._topic_paths` treats any of these as "no
     register", exactly as it treated a `None` slug before — and it does so by
     catching `Exception`, not `ValueError`, so a failure from any cause here
     (or from the lazy `_factcheck_engine` import `_display_key` makes) reads
