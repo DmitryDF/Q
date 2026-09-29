@@ -64,6 +64,15 @@
         ]
       },
       {
+        "matcher": "Write|Edit|Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${KIT_HOOKS_DIR}/bookkeeping-snapshot.sh"
+          }
+        ]
+      },
+      {
         "matcher": "Bash",
         "hooks": [
           {
@@ -101,6 +110,15 @@
       }
     ],
     "PostToolUse": [
+      {
+        "matcher": "Write|Edit|Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${KIT_HOOKS_DIR}/bookkeeping-invariant.sh"
+          }
+        ]
+      },
       {
         "matcher": "Bash",
         "hooks": [

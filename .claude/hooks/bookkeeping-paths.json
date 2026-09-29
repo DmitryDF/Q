@@ -1,0 +1,38 @@
+{
+  "version": 1,
+  "_comment": "S2 git-working-model (A4) — THE SINGLE machine-readable source of truth for the main-owned shared-bookkeeping path set. Three code paths consume it: A1 the main-pinned resolver (its shared-path scope), A3 worktree-helper.sh (its sparse-checkout exclusion set), A5 check-worktree-commit-gate.sh (its allow-rule). The bookkeeping-model.md path table is GENERATED from this file (SCL code-gen link, design A3 Cycle-7); a drift-check fails on any divergence. Do NOT hand-edit the generated prose table — edit THIS file and regenerate: `python3 ${KIT_HOOKS_DIR}/bookkeeping_paths.py gen-prose --write`.",
+  "shared_bookkeeping": [
+    {
+      "path": "TODO.md",
+      "match": "basename",
+      "kind": "code-writer",
+      "merge_union": true,
+      "note": "Per-project task list (~31 across the tree); matched by basename at any depth. Code-writer RMW (todo.py) serialized by the A2 flock; append-list-shaped for the A2 merge=union land-reconciliation."
+    },
+    {
+      "path": "Thoughts/",
+      "match": "dir-prefix",
+      "kind": "spine",
+      "merge_union": false,
+      "note": "The flat Thoughts/ slug graph (_THOUGHT/_DESIGN/_PLAN/_RESEARCH/... spines). Code-writer RMW (taskmanagement.py/work_done.py) serialized by the A2 flock. NOT merge=union: spines are structured, not append lists, so a genuine spine conflict must surface (design A4 Cycle-11 auto-abort), never be union-merged."
+    },
+    {
+      "path": "Diary/",
+      "match": "dir-prefix",
+      "kind": "append",
+      "merge_union": true,
+      "note": "Daily diary entries; append-style; written by the /close orchestrator (no code-writer RMW today). Concurrency coherence: A2 lock-guarded append primitive (main-pinned) + merge=union for the land-reconciliation path."
+    },
+    {
+      "path": "Stats.md",
+      "match": "exact",
+      "kind": "append",
+      "merge_union": true,
+      "note": "Root-level stats rows; append-style; written by the /close orchestrator (no code-writer RMW today). Same coherence path as Diary/."
+    }
+  ],
+  "harness_main_owned": {
+    "recognize_by": "config-source-repo",
+    "note": "The harness (config source) repo has NO topic-worktree workflow — every commit in its PRIMARY clone is a main-side promotion (claude-promote / a named main-side infrastructure committer). A5's commit-gate recognizes this structurally (repo toplevel == the configured source path) so the S1->S2 ALLOW_OUT_OF_TREE=1 bridge in claude-promote is retired. This is the 'legitimate main-side infrastructure committer' the S1 gate message already named."
+  }
+}

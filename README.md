@@ -63,6 +63,7 @@ hard-fails if it names a different one.
 
 - Repo scaffold, licence, install instructions and CI.
 - Bash sanitisation and config-path guards.
+- The rules the skills ground in, and the bookkeeping invariant that enforces them.
 
 ---
 
