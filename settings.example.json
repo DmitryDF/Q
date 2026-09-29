@@ -130,6 +130,10 @@
           },
           {
             "type": "command",
+            "command": "${KIT_HOOKS_DIR}/research-scope-gate.sh"
+          },
+          {
+            "type": "command",
             "command": "${KIT_HOOKS_DIR}/check-skill-marker.sh"
           }
         ]
@@ -140,6 +144,51 @@
           {
             "type": "command",
             "command": "${KIT_HOOKS_DIR}/check-discovery-lock.sh"
+          }
+        ]
+      },
+      {
+        "matcher": "WebSearch",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${KIT_HOOKS_DIR}/research-scope-gate.sh"
+          }
+        ]
+      },
+      {
+        "matcher": "WebFetch",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${KIT_HOOKS_DIR}/research-scope-gate.sh"
+          }
+        ]
+      },
+      {
+        "matcher": "mcp__claude-in-chrome__.*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${KIT_HOOKS_DIR}/research-scope-gate.sh"
+          }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${KIT_HOOKS_DIR}/research-scope-gate.sh"
+          }
+        ]
+      },
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${KIT_HOOKS_DIR}/pre-delete-claude-rule.sh"
           }
         ]
       }
@@ -154,6 +203,14 @@
           {
             "type": "command",
             "command": "python3 ${KIT_HOOKS_DIR}/discovery-present-gate.py"
+          },
+          {
+            "type": "command",
+            "command": "${KIT_HOOKS_DIR}/check-research-gate.sh"
+          },
+          {
+            "type": "command",
+            "command": "${KIT_HOOKS_DIR}/check-research-pipeline-gate.sh"
           },
           {
             "type": "command",
@@ -218,11 +275,47 @@
         ]
       },
       {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${KIT_HOOKS_DIR}/factcheck-research-file.sh"
+          }
+        ]
+      },
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${KIT_HOOKS_DIR}/research-linkcheck.sh"
+          }
+        ]
+      },
+      {
         "matcher": "Bash",
         "hooks": [
           {
             "type": "command",
             "command": "${KIT_HOOKS_DIR}/check-verifier-isolation.sh post"
+          }
+        ]
+      },
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${KIT_HOOKS_DIR}/harvest-on-verify.sh"
+          }
+        ]
+      },
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${KIT_HOOKS_DIR}/check-citation-check.sh"
           }
         ]
       }

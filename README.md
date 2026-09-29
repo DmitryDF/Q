@@ -88,6 +88,7 @@ hard-fails if it names a different one.
 - `/work-frame-and-create-todo` — the framing gate on that surface: Problem, Context, Guiding policy, Master plan, or no TODO gets created.
 - Session logging.
 - Topic state, the Discovery lock, bookkeeping and worktree placement.
+- The research pipeline manifest, scope gate and source adapters.
 
 ---
 
