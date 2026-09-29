@@ -214,6 +214,10 @@
           },
           {
             "type": "command",
+            "command": "${KIT_HOOKS_DIR}/check-handoff-marker.sh"
+          },
+          {
+            "type": "command",
             "command": "${KIT_HOOKS_DIR}/check-phase-gate.sh"
           }
         ]
