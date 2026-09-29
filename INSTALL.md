@@ -17,7 +17,7 @@ install writes, and nothing else:
 Nothing is deleted. Nothing is overwritten without being backed up. If your agent
 proposes anything outside that table, it has gone off-script — stop it.
 
-**This release ships 0 of 21 planned skills.** Everything described below is present in this tree; nothing here documents a skill that has not shipped yet.
+**This release ships 1 of 21 planned skills.** Everything described below is present in this tree; nothing here documents a skill that has not shipped yet.
 
 ---
 
@@ -194,7 +194,9 @@ Do not report success for a step you skipped.
 
 ## Step 9 — First run
 
-_No skills in this release yet — this is the scaffold push._
+Try the smallest loop first: ask your agent something, then run `/recommend` on its answer.
+
+Available in this release: `/recommend`.
 
 ---
 
