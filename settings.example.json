@@ -53,6 +53,16 @@
     "defaultMode": "auto"
   },
   "hooks": {
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 ${KIT_HOOKS_DIR}/todo.py"
+          }
+        ]
+      }
+    ],
     "PreToolUse": [
       {
         "matcher": "Bash",
@@ -116,6 +126,15 @@
           {
             "type": "command",
             "command": "${KIT_HOOKS_DIR}/bookkeeping-invariant.sh"
+          }
+        ]
+      },
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${KIT_HOOKS_DIR}/check-todo-direct-write.sh"
           }
         ]
       },

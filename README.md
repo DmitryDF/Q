@@ -81,6 +81,7 @@ hard-fails if it names a different one.
 - The rules the skills ground in, and the bookkeeping invariant that enforces them.
 - The shell-free `readonly-checker` every verifier runs as.
 - The fact-check engine, the claim seam, and the rigor dial the skills resolve their checker allocation from.
+- The TODO surface and the bookkeeping rules it obeys — the two-surface model, the slug grammar, and the git working model.
 
 ---
 
