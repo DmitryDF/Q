@@ -65,6 +65,7 @@ hard-fails if it names a different one.
 - Bash sanitisation and config-path guards.
 - The rules the skills ground in, and the bookkeeping invariant that enforces them.
 - The shell-free `readonly-checker` every verifier runs as.
+- The fact-check engine, the claim seam, and the rigor dial the skills resolve their checker allocation from.
 
 ---
 
