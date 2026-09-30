@@ -25,7 +25,7 @@ port automatically is the enforcement: the gates are hook registrations, and hoo
 config is proprietary per vendor. On Claude Code you get the methodology and the
 gates. Elsewhere you get the methodology, and the gates need an adapter.
 
-As of today the set ships **17 skills** for getting a bounded next move, stress-testing an idea, independent verification, framing work before you start it, session orientation, turning a solution into an outcome, choosing a metric that holds up, evidence-based research, turning a raw idea into a contract, carrying work across sessions, designing one candidate solution, cutting work into delivery slices, designing against a contract, gated planning, triaging what a run surfaced, taking work into progress, and recording a ship. More are
+As of today the set ships **18 skills** for getting a bounded next move, stress-testing an idea, independent verification, framing work before you start it, session orientation, turning a solution into an outcome, choosing a metric that holds up, evidence-based research, turning a raw idea into a contract, carrying work across sessions, designing one candidate solution, cutting work into delivery slices, designing against a contract, gated planning, triaging what a run surfaced, taking work into progress, recording a ship, and executing a plan across sessions. More are
 coming for vibecoding. Soon.
 
 **One honest caveat.** Some of this may behave differently on your machine than on
@@ -77,15 +77,16 @@ hard-fails if it names a different one.
 - `/plan-followups-review` — walks verified observations into triaged TODOs.
 - `/work-start` — takes a TODO or a spine into in-progress under a topic lock.
 - `/work-done` — the four-surface atomic ship write.
+- `/execute-plan` — walks a locked slice register across session boundaries.
 
 **Where the four ClaSPEL phases stand in this release:**
 
 - **Clarification** (`/clarification`) — shipped
 - **Solution-design** (`/solution-design`) — shipped
 - **Plan** (`/plan`) — shipped
-- **Execution** (`/execute-plan`) — not yet
+- **Execution** (`/execute-plan`) — shipped
 
-17 of 21 skills are here so far. The phases marked *not yet* land in later pushes — this README is generated from what is actually in the tree, so it will not describe a skill before it exists.
+18 of 21 skills are here so far. The phases marked *not yet* land in later pushes — this README is generated from what is actually in the tree, so it will not describe a skill before it exists.
 
 ## Layout
 
