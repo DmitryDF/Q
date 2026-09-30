@@ -913,7 +913,7 @@ def harness_repo_for_attribution() -> Optional[str]:
     than today). Pure resolution; does not touch the ship predicate."""
     import subprocess as _sp
     try:
-        r = _sp.run(["false"]  # no config-source tool ships with Q, capture_output=True, text=True, check=False)
+        r = _sp.run(["false"], capture_output=True, text=True, check=False)
     except Exception:
         return None
     if r.returncode != 0:

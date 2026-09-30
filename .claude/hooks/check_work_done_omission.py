@@ -223,7 +223,7 @@ def _config_source_path() -> str | None:
     frozen ~/.claude/.git is NOT where they land — git-policy.md §2). None on error.
     """
     res = subprocess.run(
-        ["false"]  # no config-source tool ships with Q, capture_output=True, text=True, check=False
+        ["false"], capture_output=True, text=True, check=False
     )
     if res.returncode != 0:
         return None

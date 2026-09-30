@@ -144,8 +144,8 @@ class Links(_Tmp):
         return r, first, second
 
     def test_L1_remote_web_base_handles_ssh_and_https_and_refuses_the_rest(self):
-        self.assertEqual(ppg.remote_web_base("git@github.com:you/your-dotfiles.git"),
-                         "https://github.com/you/your-dotfiles")
+        self.assertEqual(ppg.remote_web_base("git@github.com:<your-github-account>/config-source-remote.git"),
+                         "https://github.com/<your-github-account>/config-source-remote")
         self.assertEqual(ppg.remote_web_base("ssh://git@github.com/o/r.git"), "https://github.com/o/r")
         self.assertEqual(ppg.remote_web_base("https://github.com/o/r.git"), "https://github.com/o/r")
         self.assertEqual(ppg.remote_web_base("https://github.com/o/r/"), "https://github.com/o/r")

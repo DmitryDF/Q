@@ -67,6 +67,17 @@ jobs:
           done
           exit $fail
 
+      - name: Every shipped python module compiles
+        run: |
+          # The import step below names TWO engines. That is not coverage: a
+          # sanitiser bug shipped `hooks/work_done.py` unable to compile at push 19
+          # and every build after it stayed green, because nothing looked at the
+          # other ~90 modules. `compileall` is the whole-surface check — syntax
+          # only, no imports, so it needs none of the optional dependencies.
+          python3 -m compileall -q .claude/hooks .claude/skills \
+            || { echo "::error::a shipped module does not compile"; exit 1; }
+          find . -name '__pycache__' -type d -prune -exec rm -rf {} + 2>/dev/null || true
+
       - name: Engines import — and without the optional extras
         run: |
           shopt -s nullglob
@@ -124,7 +135,7 @@ jobs:
             echo "::error::private strings found"; fail=1
           fi
           if grep -rnE --exclude-dir=.git "${GATE_FILES[@]}" \
-               'Knowledge_Base|ExampleCo/|EMPLOYER/' . ; then
+               'Knowledge_Base|\bExampleCo\b|EMPLOYER/|config-repo' . ; then
             echo "::error::private directory names found"; fail=1
           fi
           if grep -rniE --exclude-dir=.git "${GATE_FILES[@]}" "${ATTRIB[@]}" \

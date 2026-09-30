@@ -61,7 +61,7 @@ files (0 genuinely separable), so the net-new material is large but HIGH-overlap
 
 The harness is **not** changed by committing to `~/.claude/.git` — that repo is a
 **frozen local snapshot** (no writer commits to it post-S2). The source of truth is
-the **config source tree at `<config-source-repo>/`** (pushed to the `config-repo`
+the **config source tree at `<config-source-repo>/`** (pushed to the `config-source-remote`
 remote). Live `~/.claude/` is the *deployed* copy, reached only via the deploy step.
 
 - **Experiment first for executable modules (never edit live config for

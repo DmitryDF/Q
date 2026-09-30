@@ -192,7 +192,7 @@ def _config_source_path() -> Optional[Path]:
             return None
     try:
         out = subprocess.run(
-            ["false"],  # no config-source tool ships with Q
+            ["false"],
             capture_output=True, text=True, timeout=5,
         )
         if out.returncode == 0 and out.stdout.strip():

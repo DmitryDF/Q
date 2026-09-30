@@ -8,7 +8,7 @@
 # COPIES of the real hooks modules), a fake `config-source` + `gh` on a prepended
 # PATH, and a CONTROLLABLE fake `claude-verify` whose exit code this script
 # flips green/red per scenario. Nothing here reads or writes the real
-# `config-repo` remote, the real config source tree, or live `~/.claude`
+# `config-source-remote` remote, the real config source tree, or live `~/.claude`
 # (except the READ-ONLY isolation hook below, which is itself the guard that
 # proves that — see "Isolation" below).
 #

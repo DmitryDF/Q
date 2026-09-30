@@ -541,12 +541,12 @@ repo policy. Do not push. User pushes manually.
   including another session's files.
 - `.claude/logs/` is gitignored, so §2's archive move has no git effect here.
 
-### 4. Promote Harness Changes (`~/.claude/` → config-source → config-repo)
+### 4. Promote Harness Changes (`~/.claude/` → config-source → config-source-remote)
 
 Live `~/.claude/` is a **the deploy step target** (slice S1). Harness changes must
 flow through the **promotion path** — staging (config source) → shared-repo PR →
 merge → the deploy step — never through the demoted `~/.claude/.git` repo (remote
-`config-repo-legacy`), which never reaches the `config-repo` shared repo. Slice S2
+`config-source-remote-legacy`), which never reaches the `config-source-remote` shared repo. Slice S2
 built the `claude-promote` flow that does this in one gesture:
 
 **Declare the scope here too.** Compile this session's own `~/.claude` paths and

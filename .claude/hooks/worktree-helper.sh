@@ -1215,7 +1215,7 @@ _gated_repos() {
 
 # Allowlisted commit targets: `<path-or-pattern>|<reason>`. Data, not logic.
 COVERAGE_ALLOWLIST=(
-  "$HOME/.claude/.git|frozen local snapshot (git-policy.md §2: never hand-commit it; remote is config-repo-legacy). No converted surface publishes there: starter-kit 6a was rerouted to claude-promote (S6), /ninja-fix routes ~/.claude edits to claude-promote, and commit_scope.py publish REFUSES this root (post-S8 audit fix)."
+  "$HOME/.claude/.git|frozen local snapshot (git-policy.md §2: never hand-commit it; remote is config-source-remote-legacy). No converted surface publishes there: starter-kit 6a was rerouted to claude-promote (S6), /ninja-fix routes ~/.claude edits to claude-promote, and commit_scope.py publish REFUSES this root (post-S8 audit fix)."
   "starter-kit 6b temp clone (mktemp)|fresh private clone of starter-kit-claude with its own index; no other session can stage into it."
   "worktree_cutover.py plumbing commits|commit-tree + update-ref fire no pre-commit hook at all; bounded by a scratch GIT_INDEX_FILE instead (build-time checker territory, S7/A9)."
   "independent project repos (e.g. Personal/Per-App-Network-Routing, [YourProject]/[you], ~/repos/Q, ~/repos/double-check)|not in the worktree-per-topic model; installing this gate would also impose its out-of-worktree BLOCK on every ordinary commit there. /close and /ninja-fix publish into them through commit_scope.py publish, which scopes both verbs whether or not a hook runs."

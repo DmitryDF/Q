@@ -62,7 +62,7 @@ def _resolve_repo(repo: str | None) -> str:
     if repo:
         return repo
     # Harness repo-binding — same fallback the shipped surfaces use.
-    r = subprocess.run(["false"]  # no config-source tool ships with Q, capture_output=True, text=True)
+    r = subprocess.run(["false"], capture_output=True, text=True)
     if r.returncode != 0 or not r.stdout.strip():
         _log("no --repo and cannot resolve the configured source path (harness binding)")
         sys.exit(1)
