@@ -75,6 +75,21 @@
         ]
       }
     ],
+    "PermissionRequest": [
+      {
+        "matcher": "ExitPlanMode",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${KIT_HOOKS_DIR}/permission-plan-gate.sh"
+          },
+          {
+            "type": "command",
+            "command": "${KIT_HOOKS_DIR}/check-kb-disposition-gate.sh"
+          }
+        ]
+      }
+    ],
     "PreToolUse": [
       {
         "matcher": "Bash",
@@ -91,6 +106,28 @@
           {
             "type": "command",
             "command": "${KIT_HOOKS_DIR}/bookkeeping-snapshot.sh"
+          }
+        ]
+      },
+      {
+        "matcher": "EnterPlanMode",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${KIT_HOOKS_DIR}/check-session-boundary.sh"
+          },
+          {
+            "type": "command",
+            "command": "${KIT_HOOKS_DIR}/check-thought-bound.sh"
+          }
+        ]
+      },
+      {
+        "matcher": "Read",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${KIT_HOOKS_DIR}/check-pe-freshness.sh"
           }
         ]
       },
@@ -122,6 +159,15 @@
         ]
       },
       {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${KIT_HOOKS_DIR}/check-plan-readonly.sh"
+          }
+        ]
+      },
+      {
         "matcher": "Agent",
         "hooks": [
           {
@@ -135,6 +181,15 @@
           {
             "type": "command",
             "command": "${KIT_HOOKS_DIR}/check-skill-marker.sh"
+          }
+        ]
+      },
+      {
+        "matcher": ".*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${KIT_HOOKS_DIR}/check-post-plan-pending.sh"
           }
         ]
       },
@@ -202,7 +257,15 @@
           },
           {
             "type": "command",
+            "command": "${KIT_HOOKS_DIR}/stop-plan-gate.sh"
+          },
+          {
+            "type": "command",
             "command": "python3 ${KIT_HOOKS_DIR}/discovery-present-gate.py"
+          },
+          {
+            "type": "command",
+            "command": "${KIT_HOOKS_DIR}/check-kb-disposition-gate.sh"
           },
           {
             "type": "command",
@@ -256,6 +319,15 @@
         "hooks": [
           {
             "type": "command",
+            "command": "${KIT_HOOKS_DIR}/track-plan-file.sh"
+          }
+        ]
+      },
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
             "command": "${KIT_HOOKS_DIR}/track-session-files.sh"
           }
         ]
@@ -266,6 +338,15 @@
           {
             "type": "command",
             "command": "${KIT_HOOKS_DIR}/verify-thought-file.sh"
+          }
+        ]
+      },
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${KIT_HOOKS_DIR}/verify-plan-file.sh"
           }
         ]
       },
@@ -297,11 +378,38 @@
         ]
       },
       {
+        "matcher": "Agent",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${KIT_HOOKS_DIR}/check-impl-models.sh"
+          }
+        ]
+      },
+      {
         "matcher": "Bash",
         "hooks": [
           {
             "type": "command",
             "command": "${KIT_HOOKS_DIR}/check-verifier-isolation.sh post"
+          }
+        ]
+      },
+      {
+        "matcher": "ExitPlanMode",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${KIT_HOOKS_DIR}/post-plan-uxgate.sh"
+          }
+        ]
+      },
+      {
+        "matcher": "AskUserQuestion",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${KIT_HOOKS_DIR}/clear-post-plan-marker.sh"
           }
         ]
       },
@@ -345,6 +453,10 @@
     "SessionEnd": [
       {
         "hooks": [
+          {
+            "type": "command",
+            "command": "${KIT_HOOKS_DIR}/cleanup-plan-files.sh"
+          },
           {
             "type": "command",
             "command": "${KIT_HOOKS_DIR}/release-session-locks.sh"
