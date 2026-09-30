@@ -48,6 +48,11 @@ jobs:
           # A shipped CLAUDE.md is a FAILURE, not an omission (O1/A7): an adopter
           # already has one and overwriting it is hostile.
           test ! -f CLAUDE.md || { echo "CLAUDE.md must NOT ship — setup.sh asks instead"; exit 1; }
+          # One author, no pull requests. GitHub cannot disable PRs on a public repo,
+          # so these two files ARE the mechanism — checked here so a template edit
+          # cannot drop them silently.
+          test -f CONTRIBUTING.md || { echo "MISSING CONTRIBUTING.md — the no-PR policy has nowhere to live"; exit 1; }
+          test -f .github/PULL_REQUEST_TEMPLATE.md || { echo "MISSING .github/PULL_REQUEST_TEMPLATE.md — the policy would not reach anyone opening a PR"; exit 1; }
 
       - name: The kit's own verifier — the command INSTALL.md tells adopters to run
         run: |
