@@ -1,0 +1,8 @@
+{
+  "plan_path_or_content": "## Coherent Actions\n\n| Action | Addresses Gap | What it does | Model | Reason |\n|--------|---------------|--------------|-------|--------|\n| A1 | G1 | Add `--validate-framing` flag to `todo.py cmd_add` — regex check on `[Thought]`-tagged items for 4-component labeled structure (Problem / Context / Guiding policy / Master plan) | Sonnet | Deterministic regex validation; no judgment. |\n| A2 | G1 | Write `test_todo_framing.py` — 8 test cases covering valid 4-component items + each of the 4 missing-component failure modes + whitespace-only components | Sonnet | Mechanical test authoring once A1 schema is locked. |\n| V  | all | Smoke test: `python3 -m pytest tests/test_todo_framing.py -q` → 8/8 PASS | Sonnet | Deterministic. |\n\nThe plan addresses a single gap (missing `--validate-framing` flag) with two sequential actions (A1 implementation, A2 tests) and one verification step. The entire plan changes if and only if the framing-validation regex or the 4-component schema changes — one reason to change. Context footprint: 1 file (`todo.py`), 1 new test file, no external API calls, no database — well within routine model's working capacity for one focused session. Routine model sufficient throughout.",
+  "desired_outcome": "Any [Thought]-tagged TODO item is validated for the 4-component framing at add-time, so malformed items are rejected before they enter the TODO list.",
+  "context_budget_per_agent": {
+    "routine": "~4000 tokens",
+    "more_capable": "~4000 tokens"
+  }
+}
