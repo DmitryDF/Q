@@ -1,0 +1,705 @@
+"""Gate for research-source-adapters S10 session 3 — A5.
+
+A5 is where the grading stops being inert. Sessions 1 and 2 built the channel
+and the rule; this slice lands them on the pipeline that actually fact-checks
+research files, and records that design-A25's stated landing was a no-op.
+
+WHAT THIS MODULE DOES NOT PROVE — stated rather than implied:
+
+* **Nothing about a person's experience.** The report body is S11's. What is
+  asserted here is what the run RECORDS and what its verdict becomes.
+* **Nothing about whether a grade is RIGHT.** The floor's calibration is A4's
+  and is asserted there. Here the question is only whether the pipeline
+  consults it, acts on it, and leaves the record.
+* **The end-to-end run injects its content checker**, as every sibling FC test
+  does. What is real is the engine's own `factcheck_run` orchestration — the
+  gate chain, the marker sequence, the verdict writeback — not a live model.
+"""
+
+from __future__ import annotations
+
+import os
+import shutil
+import subprocess
+import sys
+import tempfile
+import unittest
+from pathlib import Path
+
+CONFIG_DIR = Path(os.environ.get("CLAUDE_CONFIG_DIR") or (Path.home() / ".claude"))
+HOOKS_DIR = CONFIG_DIR / "hooks"
+SKILLS_DIR = CONFIG_DIR / "skills"
+
+sys.path.insert(0, str(HOOKS_DIR))
+sys.path.insert(0, str(SKILLS_DIR))
+
+import _factcheck_engine as eng                    # noqa: E402
+import claim_grading_record as cgr                 # noqa: E402
+import internal_claim_grounds as icg               # noqa: E402
+from research import admission_record as arec      # noqa: E402
+from research import scope_record as srec          # noqa: E402
+
+STRONG_PIN = "code:myrepo@abc123:pkg/mod.py:12-14"
+WEAKEST_PIN = "code:myrepo@abc123:pkg/other.py:1-400"
+
+
+def _mock_resolver(proj, topic):
+    state = {"topic_slug": proj, "project_slug": topic}
+    return lambda _sid: (proj, topic, state)
+
+
+def _markers(directory):
+    """Every VERDICT MARKER in `directory`, by the engine's own predicate.
+
+    Deliberately not a `*R*.md` glob. That was the first version and it was
+    wrong in a way worth keeping a note about: it matched the grading RECORD
+    (`…_GRADING_fc-1.md` contains an upper-case R), so a test meant to assert
+    "a clean run writes no marker" failed on the record it was supposed to
+    ignore. Asking the engine's regex is both correct and the same question the
+    rollup asks.
+    """
+    return sorted(p for p in Path(directory).glob("*.md")
+                  if eng._KEYED_MARKER_RE.match(p.name)
+                  or eng._LEGACY_MARKER_RE.match(p.name))
+
+
+def _latest_marker_field(directory, field):
+    markers = _markers(directory)
+    if not markers:
+        return None
+    for line in markers[-1].read_text(encoding="utf-8").splitlines():
+        if line.startswith(f"{field}:"):
+            return line.split(":", 1)[1].strip()
+    return None
+
+
+class _GateBase(unittest.TestCase):
+    def setUp(self):
+        self.tmp = Path(tempfile.mkdtemp())
+        self.topic = self.tmp / "topic"
+        self.topic.mkdir()
+        self.report = self.tmp / "demo-20260101010101_RESEARCH.md"
+        self.store = arec.AdmissionRecordStore(self.topic, slug="demo",
+                                               ts="20260101010101")
+
+    def tearDown(self):
+        shutil.rmtree(self.tmp, ignore_errors=True)
+
+    def _seed(self, pin, *, bound, evidence):
+        """Put one evidence entry in the admission record, as the port would."""
+        kwargs = {"run_id": "seed", "pin_str": pin, "evidence_path": evidence,
+                  "declaration_bound": bound}
+        if evidence == arec.EVIDENCE_ORIGINAL:
+            kwargs["reopen_instruction"] = f"read {pin}"
+        else:
+            kwargs["excerpt"] = "the bytes this claim rests on"
+        self.store.put_evidence(arec.EvidenceEntry(**kwargs))
+
+    def _write_report(self, *pins):
+        body = ["# Findings", ""]
+        for i, pin in enumerate(pins, start=1):
+            body.append(f"Finding {i}. [stated — {pin}]")
+        self.report.write_text("\n".join(body) + "\n", encoding="utf-8")
+
+    def _grading_records(self):
+        return sorted(self.topic.glob("*_GRADING_*.md"))
+
+
+# ---------------------------------------------------------------------------
+# A5 — the gate's truth table
+# ---------------------------------------------------------------------------
+class GateTruthTableTests(_GateBase):
+    def test_a_report_with_no_internal_claim_is_a_no_op(self):
+        """A pure-web report must not degrade — and must not pay for the attempt."""
+        self.report.write_text("A claim. [stated — https://example.com/a]\n",
+                               encoding="utf-8")
+        verdict = {"status": "PASS", "rounds": 1}
+
+        out = eng._run_internal_claim_grading_gate(
+            str(self.report), "PASS", verdict, self.topic, "research",
+            adm_store=self.store)
+
+        self.assertEqual(out["status"], "PASS")
+        self.assertEqual(list(_markers(self.topic)), [])
+        self.assertEqual(self._grading_records(), [],
+                         "no internal claim -> no record to write")
+        self.assertNotIn("claim_grading_axis", out)
+
+    def test_all_strong_claims_stay_pass_write_no_marker_but_do_leave_a_record(self):
+        """The divergence that matters: a clean run still records its judgment."""
+        self._seed(STRONG_PIN, bound=srec.SCOPE_MODE_ENUMERATED,
+                   evidence=arec.EVIDENCE_ORIGINAL)
+        self._write_report(STRONG_PIN)
+        verdict = {"status": "PASS", "rounds": 1}
+
+        out = eng._run_internal_claim_grading_gate(
+            str(self.report), "PASS", verdict, self.topic, "research",
+            adm_store=self.store, run_id="fc-1")
+
+        self.assertEqual(out["status"], "PASS")
+        self.assertEqual(out["claim_grading_axis"], "OK")
+        self.assertEqual(list(_markers(self.topic)), [],
+                         "a clean run writes no verdict marker")
+        records = self._grading_records()
+        self.assertEqual(len(records), 1, "a clean run STILL writes its record")
+        doc = cgr.GradingRecordStore(self.topic, slug="demo",
+                                     ts="20260101010101").read("fc-1")
+        self.assertEqual(doc["folded_status"], "PASS")
+        self.assertTrue(doc["grades"][0].rationale.strip())
+
+    def test_weakest_on_all_three_downgrades_and_the_marker_names_the_claim(self):
+        self._seed(WEAKEST_PIN, bound=srec.SCOPE_MODE_UNSCOPED,
+                   evidence=arec.EVIDENCE_CAPTURED)
+        self._write_report(WEAKEST_PIN)
+        verdict = {"status": "PASS", "rounds": 1}
+
+        out = eng._run_internal_claim_grading_gate(
+            str(self.report), "PASS", verdict, self.topic, "research",
+            adm_store=self.store, run_id="fc-1")
+
+        self.assertEqual(out["status"], "INCOMPLETE")
+        self.assertEqual(_latest_marker_field(self.topic, "verdict"), "INCOMPLETE")
+        self.assertEqual(_latest_marker_field(self.topic, "claim_grading_axis"),
+                         "internal_claim_grounds")
+        marker = sorted(_markers(self.topic))[-1].read_text(encoding="utf-8")
+        self.assertIn(WEAKEST_PIN, marker)
+        # The ground responsible is NAMED, not merely counted (C8).
+        self.assertIn("set no bound", marker)
+        self.assertIn("captured snapshot", marker)
+        self.assertIn("whole item", marker)
+        # Un-accepted: the close gate still blocks.
+        self.assertNotIn("accept_reason:", marker)
+
+    def test_the_verdict_carries_the_reason_naming_the_withheld_claim(self):
+        self._seed(WEAKEST_PIN, bound=srec.SCOPE_MODE_UNSCOPED,
+                   evidence=arec.EVIDENCE_CAPTURED)
+        self._write_report(WEAKEST_PIN)
+        verdict = {"status": "PASS", "rounds": 1}
+
+        out = eng._run_internal_claim_grading_gate(
+            str(self.report), "PASS", verdict, self.topic, "research",
+            adm_store=self.store, run_id="fc-1")
+
+        self.assertIn(WEAKEST_PIN, out.get("reason", ""))
+
+    def test_one_weakest_claim_among_strong_ones_still_downgrades_the_run(self):
+        self._seed(STRONG_PIN, bound=srec.SCOPE_MODE_ENUMERATED,
+                   evidence=arec.EVIDENCE_ORIGINAL)
+        self._seed(WEAKEST_PIN, bound=srec.SCOPE_MODE_UNSCOPED,
+                   evidence=arec.EVIDENCE_CAPTURED)
+        self._write_report(STRONG_PIN, WEAKEST_PIN)
+        verdict = {"status": "PASS", "rounds": 1}
+
+        out = eng._run_internal_claim_grading_gate(
+            str(self.report), "PASS", verdict, self.topic, "research",
+            adm_store=self.store, run_id="fc-1")
+
+        self.assertEqual(out["status"], "INCOMPLETE")
+        doc = cgr.GradingRecordStore(self.topic, slug="demo",
+                                     ts="20260101010101").read("fc-1")
+        self.assertEqual([g.status for g in doc["grades"]],
+                         ["PASS", "INCOMPLETE"])
+
+    def test_a_claim_whose_grounds_cannot_be_reached_does_not_downgrade_the_run(self):
+        """C2, and the reason the gate reads the floor rather than the status.
+
+        A research file written before any of this existed cites internal
+        sources no admission run ever recorded. Every such claim resolves
+        `ungraded`. Treating that as a downgrade would fail every legacy file
+        the moment it was re-checked — so absence of grounds is recorded per
+        claim and does NOT move the run's verdict. Only ESTABLISHED grounds
+        found weakest do.
+        """
+        self._write_report("code:ghost@000:no/such.py:1-1")   # nothing seeded
+        verdict = {"status": "PASS", "rounds": 1}
+
+        out = eng._run_internal_claim_grading_gate(
+            str(self.report), "PASS", verdict, self.topic, "research",
+            adm_store=self.store, run_id="fc-1")
+
+        self.assertEqual(out["status"], "PASS", "a legacy file must not start failing")
+        self.assertEqual(list(_markers(self.topic)), [])
+        # But it is NOT silently confirmed either — the record says so.
+        doc = cgr.GradingRecordStore(self.topic, slug="demo",
+                                     ts="20260101010101").read("fc-1")
+        self.assertEqual(doc["grades"][0].status, "INCOMPLETE")
+        self.assertIn("no admission record", doc["grades"][0].rationale)
+
+    def test_a_genuine_content_non_pass_short_circuits_the_gate(self):
+        self._seed(WEAKEST_PIN, bound=srec.SCOPE_MODE_UNSCOPED,
+                   evidence=arec.EVIDENCE_CAPTURED)
+        self._write_report(WEAKEST_PIN)
+        verdict = {"status": "DIRTY", "rounds": 2}
+
+        out = eng._run_internal_claim_grading_gate(
+            str(self.report), "DIRTY", verdict, self.topic, "research",
+            adm_store=self.store)
+
+        self.assertEqual(out["status"], "DIRTY")
+        self.assertEqual(list(_markers(self.topic)), [])
+        self.assertEqual(self._grading_records(), [])
+
+    def test_a_non_research_kind_is_untouched(self):
+        self._write_report(WEAKEST_PIN)
+        verdict = {"status": "PASS", "rounds": 1}
+        out = eng._run_internal_claim_grading_gate(
+            str(self.report), "PASS", verdict, self.topic, "plan",
+            adm_store=self.store)
+        self.assertEqual(out["status"], "PASS")
+        self.assertEqual(self._grading_records(), [])
+
+    def test_a_gate_error_degrades_to_incomplete_never_a_silent_pass(self):
+        self._write_report(WEAKEST_PIN)
+        verdict = {"status": "PASS", "rounds": 1}
+
+        class _Boom:
+            slug = "demo"
+            ts = "20260101010101"
+
+            def get_evidence(self, *a, **k):
+                raise RuntimeError("record unreadable")
+
+        # A2 is fail-soft, so a raising store yields `ungraded` rather than an
+        # exception — which does NOT downgrade. The gate's own last resort is
+        # exercised by breaking something A2 cannot absorb.
+        original = eng._as_marker_slot
+        try:
+            eng._as_marker_slot = lambda *_a, **_k: (_ for _ in ()).throw(
+                RuntimeError("slot resolution failed"))
+            out = eng._run_internal_claim_grading_gate(
+                str(self.report), "PASS", verdict, self.topic, "research",
+                adm_store=_Boom())
+        finally:
+            eng._as_marker_slot = original
+
+        self.assertEqual(out["status"], "INCOMPLETE")
+        self.assertEqual(out["claim_grading_axis"], "INCOMPLETE")
+
+    def test_losing_the_record_does_not_cost_the_run_its_verdict_signal(self):
+        """The record is the audit trail, not the gate."""
+        self._seed(WEAKEST_PIN, bound=srec.SCOPE_MODE_UNSCOPED,
+                   evidence=arec.EVIDENCE_CAPTURED)
+        self._write_report(WEAKEST_PIN)
+        verdict = {"status": "PASS", "rounds": 1}
+
+        # A marker-shaped run_id is refused by the record writer (S10/A3).
+        out = eng._run_internal_claim_grading_gate(
+            str(self.report), "PASS", verdict, self.topic, "research",
+            adm_store=self.store, run_id="R1")
+
+        self.assertEqual(out["status"], "INCOMPLETE", "the fold still happened")
+        self.assertIn("claim_grading_record_error", out)
+        self.assertEqual(self._grading_records(), [])
+
+
+# ---------------------------------------------------------------------------
+# A5 — severity interaction with the sibling axes
+# ---------------------------------------------------------------------------
+class SeverityFoldTests(_GateBase):
+    def test_it_does_not_mask_a_more_severe_earlier_axis(self):
+        """An earlier ESCALATE outranks this gate's INCOMPLETE, and the marker
+        the close gate reads must still resolve to the worse one."""
+        self._seed(WEAKEST_PIN, bound=srec.SCOPE_MODE_UNSCOPED,
+                   evidence=arec.EVIDENCE_CAPTURED)
+        self._write_report(WEAKEST_PIN)
+        eng._write_coverage_marker(self.topic, "ESCALATE", [], ["dropped"],
+                                   "USER_CONFIRMED", "research")
+        verdict = {"status": "ESCALATE", "rounds": 1}
+
+        out = eng._run_internal_claim_grading_gate(
+            str(self.report), "PASS", verdict, self.topic, "research",
+            adm_store=self.store, run_id="fc-1")
+
+        self.assertEqual(out["status"], "ESCALATE", "severity-max, not assignment")
+        self.assertEqual(_latest_marker_field(self.topic, "verdict"), "ESCALATE",
+                         "a less severe axis must not overwrite a hard block")
+
+    def test_the_always_written_record_does_not_mask_an_earlier_escalate(self):
+        """The masking guard at the GATE level, driven by the production path.
+
+        A clean grading run writes its record unconditionally. If that record
+        were marker-shaped it would become the newest marker and mask the
+        ESCALATE beneath it.
+        """
+        self._seed(STRONG_PIN, bound=srec.SCOPE_MODE_ENUMERATED,
+                   evidence=arec.EVIDENCE_ORIGINAL)
+        self._write_report(STRONG_PIN)
+        eng._write_coverage_marker(self.topic, "ESCALATE", [], ["dropped"],
+                                   "USER_CONFIRMED", "research")
+        before = sorted(_markers(self.topic))
+        verdict = {"status": "ESCALATE", "rounds": 1}
+
+        eng._run_internal_claim_grading_gate(
+            str(self.report), "PASS", verdict, self.topic, "research",
+            adm_store=self.store, run_id="fc-1")
+
+        self.assertEqual(len(self._grading_records()), 1, "the record was written")
+        self.assertEqual(sorted(_markers(self.topic)), before,
+                         "and it did not join the marker sequence")
+        self.assertEqual(_latest_marker_field(self.topic, "verdict"), "ESCALATE")
+
+
+# ---------------------------------------------------------------------------
+# A5 — the REAL research fact-check run (the plan's stated gate)
+# ---------------------------------------------------------------------------
+class _E2EBase(unittest.TestCase):
+    """Fixture + helpers shared by the two end-to-end classes.
+
+    A base rather than a subclass relationship, so the second class does not
+    silently re-run the first's four tests under a different name.
+    """
+
+    PROJ = "TestS10"
+    TOPIC = "grading"
+    SID = "test-s10-a5"
+
+    def setUp(self):
+        self.tmp = Path(tempfile.mkdtemp())
+        self.state_dir = self.tmp / "validation"
+        self.resolver = _mock_resolver(self.PROJ, self.TOPIC)
+        self.rp_dir = self.tmp / "rp"
+        self.rp_dir.mkdir()
+        self._prev_rp = os.environ.get("RP_STATE_DIR")
+        os.environ["RP_STATE_DIR"] = str(self.rp_dir)
+        self.report = self.tmp / "demo-20260101010101_RESEARCH.md"
+
+    def tearDown(self):
+        if self._prev_rp is None:
+            os.environ.pop("RP_STATE_DIR", None)
+        else:
+            os.environ["RP_STATE_DIR"] = self._prev_rp
+        shutil.rmtree(self.tmp, ignore_errors=True)
+
+    def _topic_dir(self):
+        return self.state_dir / self.PROJ / self.TOPIC / "research"
+
+    def _run(self, seed=()):
+        """Drive a real `factcheck_run`, seeding the run's OWN admission store.
+
+        The seeding wraps `_resolve_web_admission` rather than pre-writing a
+        record file, and the reason is worth stating: that resolver stamps the
+        store with `datetime.now()`, and `get_evidence` searches by the store's
+        own `<slug>-<ts>_ADMISSION_*` stem. A record written by a test-built
+        store with a fixed timestamp therefore sits under a DIFFERENT stem and
+        is invisible to the run — which is what the first version of these tests
+        did, and it read as "the gate found no floor hit" rather than as a
+        broken fixture. In production both halves are the same store object, so
+        the mismatch is an artefact of seeding, not of the code under test.
+
+        Everything else is the real thing: the real resolver, the real store,
+        the real gate chain, the real marker sequence. Only the CONTENT checker
+        is injected, exactly as every sibling FC test does.
+        """
+        real = eng._resolve_web_admission
+
+        def _seeding_resolver(*args, **kwargs):
+            scope, store = real(*args, **kwargs)
+            for pin, bound, evidence in seed:
+                entry = {"run_id": "seed", "pin_str": pin,
+                         "evidence_path": evidence, "declaration_bound": bound}
+                if evidence == arec.EVIDENCE_ORIGINAL:
+                    entry["reopen_instruction"] = f"read {pin}"
+                else:
+                    entry["excerpt"] = "the bytes"
+                store.put_evidence(arec.EvidenceEntry(**entry))
+            return scope, store
+
+        eng._resolve_web_admission = _seeding_resolver
+        try:
+            return eng.factcheck_run(
+                self.state_dir, str(self.report), "research", self.SID,
+                debounce_seconds=0,
+                _checker_fn=lambda *_a, **_k: "VERDICT: PASS",
+                _proj_topic_resolver=self.resolver,
+                max_rounds=3,
+                cycle_id="default",
+            )
+        finally:
+            eng._resolve_web_admission = real
+
+    def _grading_marker(self):
+        """The marker THIS gate wrote, distinguished from a sibling axis's."""
+        for p in _markers(self._topic_dir()):
+            if "claim_grading_axis:" in p.read_text(encoding="utf-8"):
+                return p
+        return None
+
+class EndToEndResearchRunTests(_E2EBase):
+    """Driven through `factcheck_run`, NOT a /double-check invocation.
+
+    The plan's A5 validation gate says "demonstrated on a real research
+    fact-check run" precisely because the design's own A25 landing would have
+    been demonstrable only on the /double-check path, where it is a no-op for
+    this kind.
+    """
+
+    # NOTE on what the RUN's overall status can and cannot show here. This
+    # fixture has no coverage-angles sidecar, so `_run_coverage_axis_gate`
+    # independently degrades every run to INCOMPLETE ("no obtainable
+    # checklist"), and it runs BEFORE this gate. So in an unmodified run the
+    # overall status is NOT the discriminator — `claim_grading_axis` and this
+    # gate's own marker are.
+    #
+    # An earlier version of `test_a_real_run_records_a_withheld_confirmation…`
+    # nonetheless asserted `status != "PASS"` and labelled it "(C9)". That
+    # assertion was VACUOUS: the coverage axis had already made it true before
+    # the grading gate ran, so it held whether this gate worked, was disabled or
+    # was broken. It was caught by a checker asked to hunt for exactly that, and
+    # it is recorded here rather than quietly deleted, because writing the
+    # caveat and then asserting against it anyway is the failure mode the
+    # caveat existed to prevent.
+    #
+    # C9 ("the run's own verdict reflects a withheld confirmation") is now
+    # demonstrated by `WithheldConfirmationMovesTheRunVerdictTests` below, which
+    # neutralises the confounding axis and asserts a PAIR — the same fixture
+    # ending PASS on strong grounds and INCOMPLETE on weakest ones. One arm
+    # alone could still be vacuous; the pair cannot.
+
+    def test_a_real_run_records_a_withheld_confirmation_on_the_grading_axis(self):
+        self.report.write_text(
+            f"# Findings\n\nThe module is broken. [stated — {WEAKEST_PIN}]\n",
+            encoding="utf-8")
+
+        verdict = self._run(seed=[(WEAKEST_PIN, srec.SCOPE_MODE_UNSCOPED,
+                                   arec.EVIDENCE_CAPTURED)])
+
+        self.assertEqual(verdict["claim_grading_axis"], "INCOMPLETE",
+                         "the grading gate withheld the claim's confirmation")
+        self.assertIn(WEAKEST_PIN, verdict.get("reason", ""))
+        marker = self._grading_marker()
+        self.assertIsNotNone(marker, "the run wrote this gate's own marker")
+        self.assertIn(WEAKEST_PIN, marker.read_text(encoding="utf-8"))
+        self.assertTrue(list(self._topic_dir().glob("*_GRADING_*.md")),
+                        "the run left its per-claim record")
+
+    def test_a_real_run_on_strong_grounds_does_not_withhold_and_still_records(self):
+        self.report.write_text(
+            f"# Findings\n\nThe module opens with one. [stated — {STRONG_PIN}]\n",
+            encoding="utf-8")
+
+        verdict = self._run(seed=[(STRONG_PIN, srec.SCOPE_MODE_ENUMERATED,
+                                   arec.EVIDENCE_ORIGINAL)])
+
+        self.assertEqual(verdict["claim_grading_axis"], "OK",
+                         "strong grounds are confirmed exactly as before (C2)")
+        self.assertIsNone(self._grading_marker(),
+                          "a clean grading axis writes no marker of its own")
+        self.assertTrue(list(self._topic_dir().glob("*_GRADING_*.md")),
+                        "an all-strong run still records what it graded")
+
+    def test_a_real_pure_web_run_is_untouched_by_this_gate(self):
+        self.report.write_text(
+            "# Findings\n\nA claim. [stated — https://example.com/a]\n",
+            encoding="utf-8")
+
+        verdict = self._run()
+
+        self.assertNotIn("claim_grading_axis", verdict)
+        self.assertIsNone(self._grading_marker())
+        self.assertEqual(list(self._topic_dir().glob("*_GRADING_*.md")), [])
+
+    def test_the_gate_still_runs_when_the_admission_context_could_not_be_built(self):
+        """The pre-binding this slice added to `factcheck_run`.
+
+        `_resolve_web_admission` raising used to leave `_adm_store` unbound, so
+        the gate would have died on a NameError — the same failure mode the
+        `cited_urls` pre-binding was added to fix for the zero-coverage gate.
+        """
+        self.report.write_text(
+            f"# Findings\n\nA claim. [stated — {WEAKEST_PIN}]\n", encoding="utf-8")
+        original = eng._resolve_web_admission
+        try:
+            eng._resolve_web_admission = lambda *_a, **_k: (_ for _ in ()).throw(
+                RuntimeError("no admission context"))
+            verdict = self._run()
+        finally:
+            eng._resolve_web_admission = original
+
+        # It ran (no NameError, no gate-error INCOMPLETE) and, finding no
+        # reachable grounds, recorded them as ungraded WITHOUT withholding —
+        # absence of grounds is not the floor (C2).
+        self.assertEqual(verdict["claim_grading_axis"], "OK")
+        self.assertIn("claim_grading_dispositions", verdict)
+        dispositions = verdict["claim_grading_dispositions"]
+        self.assertEqual(len(dispositions), 1)
+        self.assertEqual(dispositions[0]["status"], "INCOMPLETE")
+        self.assertIsNone(self._grading_marker())
+
+
+class WithheldConfirmationMovesTheRunVerdictTests(_E2EBase):
+    """C9, demonstrated as a PAIR with the confounding axis neutralised.
+
+    The content-coverage axis degrades this fixture to INCOMPLETE on its own and
+    runs first, so on an unmodified run no assertion about `status` can tell
+    whether THIS gate did anything. Neutralising that one sibling — and nothing
+    else — is what makes the question answerable.
+
+    Isolating a confound is only worth something if the isolated variable is
+    then actually varied, so both arms run the SAME fixture and differ in one
+    thing: how the cited claim's grounds were recorded. Strong grounds must end
+    PASS; weakest-on-all-three must end INCOMPLETE. Either arm alone could still
+    be vacuous — the first if something else forced PASS, the second if
+    something else forced INCOMPLETE. The pair cannot be.
+    """
+
+    def _run_without_the_coverage_axis(self, seed):
+        original = eng._run_coverage_axis_gate
+        try:
+            # Pass-through: the coverage axis evaluates nothing and mutates
+            # nothing. Every other gate in the chain, including this slice's,
+            # runs exactly as it does in production.
+            eng._run_coverage_axis_gate = (
+                lambda _report, _content, verdict, *_a, **_k: verdict)
+            return self._run(seed=seed)
+        finally:
+            eng._run_coverage_axis_gate = original
+
+    def test_strong_grounds_end_the_run_at_pass(self):
+        self.report.write_text(
+            f"# Findings\n\nThe module opens with one. [stated — {STRONG_PIN}]\n",
+            encoding="utf-8")
+
+        verdict = self._run_without_the_coverage_axis(
+            seed=[(STRONG_PIN, srec.SCOPE_MODE_ENUMERATED,
+                   arec.EVIDENCE_ORIGINAL)])
+
+        self.assertEqual(verdict["status"], "PASS",
+                         "with coverage neutralised, a sound run passes (C2)")
+        self.assertEqual(verdict["claim_grading_axis"], "OK")
+
+    def test_weakest_on_all_three_moves_the_same_run_to_incomplete(self):
+        self.report.write_text(
+            f"# Findings\n\nThe module is broken. [stated — {WEAKEST_PIN}]\n",
+            encoding="utf-8")
+
+        verdict = self._run_without_the_coverage_axis(
+            seed=[(WEAKEST_PIN, srec.SCOPE_MODE_UNSCOPED,
+                   arec.EVIDENCE_CAPTURED)])
+
+        self.assertEqual(verdict["status"], "INCOMPLETE",
+                         "the withheld confirmation moved the RUN's verdict (C9)")
+        self.assertEqual(verdict["claim_grading_axis"], "INCOMPLETE")
+        self.assertIn(WEAKEST_PIN, verdict.get("reason", ""))
+        self.assertIsNotNone(self._grading_marker())
+
+    def test_unreachable_grounds_leave_the_same_run_at_pass(self):
+        """The third arm, and the one that pins the design judgment.
+
+        Same fixture, same neutralisation, nothing seeded — so the claim
+        resolves `ungraded`. If absence of grounds were treated as a floor hit,
+        this would read INCOMPLETE like the arm above. It reads PASS, which is
+        C2 holding for a research file written before any of this existed.
+        """
+        self.report.write_text(
+            f"# Findings\n\nA claim. [stated — {WEAKEST_PIN}]\n", encoding="utf-8")
+
+        verdict = self._run_without_the_coverage_axis(seed=[])
+
+        self.assertEqual(verdict["status"], "PASS")
+        self.assertEqual(verdict["claim_grading_axis"], "OK")
+        self.assertEqual(
+            verdict["claim_grading_dispositions"][0]["status"], "INCOMPLETE",
+            "recorded as not confirmed per claim, without withholding the run")
+
+
+# ---------------------------------------------------------------------------
+# A5 — the guard rail: DC_AXIS_REGISTRY is NOT where this landed
+# ---------------------------------------------------------------------------
+class RegistryUntouchedTests(unittest.TestCase):
+    def test_no_grading_axis_was_added_to_the_dc_axis_registry(self):
+        """A25 says extend it. The plan says do not, because every consumer of
+        that registry sits on the /double-check path — so the edit would be a
+        no-op for research AND a live change to /double-check's floor and its
+        --auto defaults, whose sole whitelisted caller is /assess."""
+        every_axis = {ax["name"]
+                      for spec in eng.DC_AXIS_REGISTRY.values()
+                      for ax in spec["axes"]}
+        for forbidden in ("claim-grading", "internal_claim_grounds", "authority",
+                          "currency", "traceability"):
+            self.assertNotIn(forbidden, every_axis)
+        # The axis universe is locked at three (double-check-allocation.md).
+        self.assertEqual(every_axis,
+                         {"groundedness", "coverage", "source-quality"})
+
+    def test_the_registry_does_carry_a_research_type_and_it_is_untouched(self):
+        """Recorded because an earlier draft of this test asserted the opposite.
+
+        `research` IS a registered /double-check artifact type — the reason A25's
+        landing is a no-op is NOT that the type is absent. It is that the research
+        FC path never reaches the audit gate: `KIND_PROMPT_TEMPLATES["research"]`
+        names no axis, and the research CLI never passes `write_dc_audit`, whose
+        default is False. Asserting absence would have been asserting something
+        false and would have hidden the real reason.
+        """
+        self.assertIn("research", eng.DC_AXIS_REGISTRY)
+        self.assertEqual(
+            [ax["name"] for ax in eng.DC_AXIS_REGISTRY["research"]["axes"]],
+            ["groundedness", "coverage", "source-quality"])
+
+    def test_the_audit_gate_is_what_never_fires_for_a_research_run(self):
+        """The actual mechanism, pinned so the no-op claim rests on code."""
+        import inspect
+        src = inspect.getsource(eng.factcheck_run)
+        self.assertIn("if write_dc_audit and kind in DC_AXIS_REGISTRY", src)
+        sig = inspect.signature(eng.factcheck_run)
+        self.assertIs(sig.parameters["write_dc_audit"].default, False)
+
+    def test_the_recommendation_auto_defaults_are_unchanged(self):
+        """The stated gate for the case where the mirror pair was touched. It was
+        not touched — asserted rather than assumed.
+
+        `_dc_auto_fill_axes` takes the `--auto` PAYLOAD, not a type name; an
+        earlier draft passed the bare string and got a schema error back, which
+        would have passed as 'unchanged' against an equally wrong expectation.
+        """
+        out = eng._dc_auto_fill_axes({"artifact_type": "recommendation"})
+        self.assertTrue(out["ok"], out)
+        self.assertEqual(
+            out["axes"],
+            [ax["name"] for ax in eng.DC_AXIS_REGISTRY["recommendation"]["axes"]])
+        self.assertIn("groundedness", out["axes"])
+
+    def test_the_allocation_drift_guard_still_exits_zero(self):
+        guard = HOOKS_DIR / "check-double-check-allocation.sh"
+        if not guard.exists():                       # pragma: no cover
+            self.skipTest("allocation drift guard not present in this tree")
+        proc = subprocess.run(["bash", str(guard)], capture_output=True, text=True,
+                              env={**os.environ, "CLAUDE_CONFIG_DIR": str(CONFIG_DIR)})
+        self.assertEqual(proc.returncode, 0,
+                         f"drift guard failed:\n{proc.stdout}\n{proc.stderr}")
+
+
+# ---------------------------------------------------------------------------
+# A5 — the correction is RECORDED, not merely acted on
+# ---------------------------------------------------------------------------
+class A25CorrectionRecordedTests(unittest.TestCase):
+    DESIGN = (Path(__file__).resolve().parents[3] / "repos" / "Projects" /
+              "Thoughts" / "research-source-adapters-20260808213101_DESIGN.md")
+
+    def test_the_a25_row_records_that_its_landing_was_a_no_op(self):
+        """"Where a design premise is false, correct it here and say so rather
+        than implementing something that satisfies the words and delivers
+        nothing." A correction nobody can find is not a correction."""
+        if not self.DESIGN.exists():                 # pragma: no cover
+            self.skipTest(f"design file not reachable at {self.DESIGN}")
+        text = self.DESIGN.read_text(encoding="utf-8")
+
+        # The ROW itself must flag it, so a reader scanning the decisions table
+        # cannot act on A25 without meeting the correction.
+        row = next((ln for ln in text.splitlines() if ln.startswith("| A25 ")), None)
+        self.assertIsNotNone(row, "no A25 row in the decisions table")
+        self.assertIn("CORRECTED AT S10", row)
+        self.assertIn("NO-OP", row.upper())
+
+        # And the correction itself must say WHY, not merely that.
+        self.assertIn("A25 correction", text)
+        _, _, note = text.partition("**A25 correction")
+        window = note[:4000]
+        for required in ("write_dc_audit", "KIND_PROMPT_TEMPLATES",
+                         "_run_internal_claim_grading_gate", "/assess"):
+            self.assertIn(required, window,
+                          f"the correction note does not name {required}")
+
+
+if __name__ == "__main__":                           # pragma: no cover
+    unittest.main()

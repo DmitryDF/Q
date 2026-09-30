@@ -1,0 +1,493 @@
+"""Gate for research-source-adapters S10 session 2 — A3 and A4.
+
+A3 builds somewhere for a per-claim answer to live; A4 supplies the answer. They
+ship together because A4 is inert without A3, and A3 without A4 is the
+driverless shape this topic has already paid for twice.
+
+WHAT THIS MODULE DOES NOT PROVE — stated rather than implied:
+
+* **Nothing runs this yet.** A5 lands the grading on the pipeline that actually
+  checks research files; until then no research run's verdict moves. Every
+  assertion here drives the rule and the carrier DIRECTLY.
+* **Nothing about a person's experience.** The report body is S11's. This file
+  asserts what is recorded, never what anyone sees.
+* **The floor is asserted, not calibrated.** None of the three "weakest" values
+  is a number, so there is nothing to tune and no test here claims one is
+  correctly tuned. What is proven is that the rule is a property of the
+  COMBINATION — which is the half a wrong implementation would get wrong.
+* **The carrier is proven for a severity A4 does not yet emit.** A4 degrades
+  only through `INCOMPLETE` (it mints no new token), but the fold is asserted
+  over `ESCALATE` too, because the carrier is what S11–S13 build on and a fold
+  that only ever saw two values is not a fold.
+"""
+
+from __future__ import annotations
+
+import os
+import sys
+from pathlib import Path
+
+import pytest
+
+CONFIG_DIR = Path(os.environ.get("CLAUDE_CONFIG_DIR") or (Path.home() / ".claude"))
+HOOKS_DIR = CONFIG_DIR / "hooks"
+SKILLS_DIR = CONFIG_DIR / "skills"
+
+sys.path.insert(0, str(HOOKS_DIR))
+sys.path.insert(0, str(SKILLS_DIR))
+
+import claim_grading_record as cgr                     # noqa: E402
+import internal_claim_grader as icg_rule               # noqa: E402
+import internal_claim_grounds as icg                   # noqa: E402
+from research import admission_record as arec          # noqa: E402
+from research import scope_record as srec              # noqa: E402
+
+
+def _load_by_path(name, path):
+    """Import a module from an explicit path, bypassing the bare-name cache.
+
+    Same reason as `test_source_admission_port._load_by_path`: other modules in
+    this suite import harness modules from the LIVE tree, and the first importer
+    wins the bare name. An assertion about the tree under test must not depend
+    on collection order.
+    """
+    import importlib.util
+    if name in sys.modules:
+        del sys.modules[name]
+    spec = importlib.util.spec_from_file_location(name, path)
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[name] = module
+    spec.loader.exec_module(module)
+    return module
+
+
+def _grounds(*, pin="code:r@abc123:pkg/mod.py:12-14", locator="code",
+             status=icg.GROUNDS_RESOLVED, bound=srec.SCOPE_MODE_ENUMERATED,
+             evidence=arec.EVIDENCE_ORIGINAL, reason=None, line=1):
+    """One resolved ClaimGrounds, built from the real dataclasses."""
+    return icg.ClaimGrounds(
+        citation=icg.InternalCitation(kind="stated", locator=locator,
+                                      pin_str=pin, line=line),
+        status=status,
+        declaration_bound=bound,
+        evidence_path=evidence,
+        reason=reason)
+
+
+# The three "weakest" settings, named once so each axis test says which axis it
+# is moving rather than repeating three literals.
+_WEAK_AUTHORITY = {"bound": srec.SCOPE_MODE_UNSCOPED}
+_WEAK_CURRENCY = {"evidence": arec.EVIDENCE_CAPTURED}
+_WEAK_TRACEABILITY = {"pin": "code:r@abc123:pkg/mod.py:1-400"}
+
+
+# =========================================================================== #
+# A3 — the carrier
+# =========================================================================== #
+
+def test_a3_a_grade_without_a_rationale_is_refused_at_construction():
+    """The reason is half the grade. A status with no reason asks for the blind
+    trust the grading exists to replace."""
+    with pytest.raises(cgr.GradingRecordError):
+        cgr.ClaimGrade(claim_key="code:r@1:a.py:1-1", status="PASS", rationale="")
+    with pytest.raises(cgr.GradingRecordError):
+        cgr.ClaimGrade(claim_key="code:r@1:a.py:1-1", status="PASS",
+                       rationale="   ")
+
+
+def test_a3_a_grade_without_a_status_is_refused_at_construction():
+    with pytest.raises(cgr.GradingRecordError):
+        cgr.ClaimGrade(claim_key="code:r@1:a.py:1-1", status="", rationale="why")
+
+
+def test_a3_one_disposition_per_claim(tmp_path):
+    store = cgr.GradingRecordStore(tmp_path, slug="t", ts="20260101000000")
+    twice = [
+        cgr.ClaimGrade(claim_key="code:r@1:a.py:1-1", status="PASS", rationale="a"),
+        cgr.ClaimGrade(claim_key="code:r@1:a.py:1-1", status="INCOMPLETE",
+                       rationale="b"),
+    ]
+    with pytest.raises(cgr.GradingRecordError):
+        store.write("run1", twice)
+
+
+@pytest.mark.parametrize("statuses,worst", [
+    (["PASS", "PASS"], "PASS"),
+    (["PASS", "INCOMPLETE"], "INCOMPLETE"),
+    (["INCOMPLETE", "ESCALATE"], "ESCALATE"),
+    (["ESCALATE", "INCOMPLETE", "PASS"], "ESCALATE"),
+    ([], "PASS"),
+])
+def test_a3_the_folded_status_is_the_worst(statuses, worst):
+    grades = [cgr.ClaimGrade(claim_key=f"code:r@1:a.py:{i}-{i}", status=s,
+                             rationale="r")
+              for i, s in enumerate(statuses, start=1)]
+    assert cgr.fold(grades) == worst
+
+
+def test_a3_a_pre_existing_incomplete_does_not_suppress_a_per_claim_block():
+    """Order-independent: the worst wins whichever way round they arrive."""
+    incomplete = cgr.ClaimGrade(claim_key="a", status="INCOMPLETE", rationale="r")
+    block = cgr.ClaimGrade(claim_key="b", status="ESCALATE", rationale="r")
+    assert cgr.fold([incomplete, block]) == "ESCALATE"
+    assert cgr.fold([block, incomplete]) == "ESCALATE"
+
+
+def test_a3_the_fold_uses_the_engines_own_ladder_and_holds_no_copy():
+    """A second copy of the ordering is how a fold starts disagreeing with the
+    gate it feeds."""
+    import _factcheck_engine as engine
+
+    assert cgr.severity_rank() is engine._COVERAGE_SEVERITY_RANK
+    source = (HOOKS_DIR / "claim_grading_record.py").read_text(encoding="utf-8")
+    assert "_COVERAGE_SEVERITY_RANK = " not in source, (
+        "claim_grading_record.py declares its own severity ladder; it must "
+        "import the engine's")
+
+
+def test_a3_an_all_strong_run_still_writes_and_reads_back(tmp_path):
+    """The divergence that matters most, and the one a copy of the mirrored
+    writer would have missed: the mirror writes ONLY on a downgrade, so a clean
+    run would have persisted nothing at all."""
+    store = cgr.GradingRecordStore(tmp_path, slug="t", ts="20260101000000")
+    grades = [cgr.ClaimGrade(claim_key="code:r@1:a.py:12-14", status="PASS",
+                             rationale="confirmed: strong on every ground",
+                             grounds={"authority": "strong"})]
+
+    path = store.write("run1", grades)
+
+    assert path.is_file(), "an all-strong run must still leave a record"
+    doc = store.read("run1")
+    assert doc["folded_status"] == "PASS"
+    assert doc["claim_count"] == 1
+    assert doc["grades"][0].rationale.startswith("confirmed:")
+    assert doc["grades"][0].grounds == {"authority": "strong"}
+
+
+def test_a3_the_reason_survives_the_round_trip(tmp_path):
+    """The second divergence: the mirrored marker writer drops the rationale."""
+    store = cgr.GradingRecordStore(tmp_path, slug="t", ts="20260101000000")
+    reason = ("not confirmed — weakest on all three grounds at once: the "
+              "declaration set no bound on this source")
+    store.write("run1", [cgr.ClaimGrade(claim_key="k", status="INCOMPLETE",
+                                        rationale=reason)])
+
+    assert store.read("run1")["grades"][0].rationale == reason
+
+
+def test_a3_reading_a_run_that_was_never_written_is_none_not_an_error(tmp_path):
+    store = cgr.GradingRecordStore(tmp_path, slug="t", ts="20260101000000")
+    assert store.read("never") is None
+
+
+# --------------------------------------------------------------------------- #
+# A3 — the naming trap, closed at the writer
+# --------------------------------------------------------------------------- #
+
+@pytest.mark.parametrize("bad", ["R1", "R12", "R0"])
+def test_a3_a_marker_shaped_run_id_is_refused(bad, tmp_path):
+    """The latent trap: `_GRADING_R1.md` parses as round 1 of a marker group
+    called `<slug>-<ts>_GRADING` that no real file owns."""
+    store = cgr.GradingRecordStore(tmp_path, slug="t", ts="20260101000000")
+    with pytest.raises(cgr.GradingRecordError) as exc:
+        store.run_path(bad)
+    assert "verdict-marker group" in str(exc.value)
+
+
+@pytest.mark.parametrize("ok", ["r1", "R", "Ra", "1R", "fc-1", "abc123", "R1x"])
+def test_a3_a_run_id_that_is_not_marker_shaped_is_accepted(ok, tmp_path):
+    store = cgr.GradingRecordStore(tmp_path, slug="t", ts="20260101000000")
+    assert store.run_path(ok).name.endswith(f"_GRADING_{ok}.md")
+
+
+def test_a3_the_guard_agrees_with_the_engines_own_marker_regex(tmp_path):
+    """The guard states the hazard locally so it still refuses when the engine
+    cannot be loaded. This test is what keeps the local statement honest: the
+    ENGINE's regex is driven over every name the guard accepts and rejects."""
+    import _factcheck_engine as engine
+
+    store = cgr.GradingRecordStore(tmp_path, slug="t", ts="20260101000000")
+    for run_id in ("R1", "R12", "R0", "r1", "R", "Ra", "1R", "fc-1", "abc123",
+                   "R1x", "x_R2"):
+        name = f"t-20260101000000_GRADING_{run_id}.md"
+        engine_says_marker = engine._KEYED_MARKER_RE.match(name) is not None
+        try:
+            store.run_path(run_id)
+            guard_refused = False
+        except cgr.GradingRecordError:
+            guard_refused = True
+        assert guard_refused == engine_says_marker, (
+            f"run_id {run_id!r}: guard refused={guard_refused} but the engine "
+            f"reads {name!r} as a marker={engine_says_marker}")
+
+
+def test_a3_a_written_record_creates_no_phantom_marker_group(tmp_path):
+    """Written into the marker directory itself, the record must not appear in
+    the rollup as a file group. This is the harm the guard prevents."""
+    import _factcheck_engine as engine
+
+    marker = tmp_path / "t-20260101000000_R1.md"
+    marker.write_text("---\nschema_version: 3\nverdict: PASS\nrounds: 1\n---\n",
+                      encoding="utf-8")
+    cgr.GradingRecordStore(tmp_path, slug="t", ts="20260101000000").write(
+        "fc-1", [cgr.ClaimGrade(claim_key="k", status="PASS", rationale="r")])
+
+    rollup = engine.research_rollup(str(tmp_path))
+    keys = {row.get("key") for row in rollup["rows"]}
+    assert keys == {"t-20260101000000"}, (
+        f"the grading record minted a phantom marker group: {keys}")
+
+
+def test_a3_a_clean_record_leaves_an_earlier_escalate_resolution_unchanged(tmp_path):
+    """The masking guard, driven by the PRODUCTION WRITER.
+
+    Hand-placing a file would make this true by construction — the point is that
+    the writer this slice ships cannot mask a verdict, not that some file
+    somewhere would not.
+    """
+    import _factcheck_engine as engine
+
+    key = "t-20260101000000"
+    escalate = tmp_path / f"{key}_R1.md"
+    escalate.write_text(
+        "---\nschema_version: 3\nverdict: ESCALATE\nrounds: 1\n---\n",
+        encoding="utf-8")
+
+    before = engine._latest_marker(tmp_path, "default", key=key)
+    assert engine._parse_marker_frontmatter(before).get("verdict") == "ESCALATE"
+
+    cgr.GradingRecordStore(tmp_path, slug="t", ts="20260101000000").write(
+        "fc-1", [cgr.ClaimGrade(claim_key="k", status="PASS",
+                                rationale="confirmed: strong on every ground")])
+
+    after = engine._latest_marker(tmp_path, "default", key=key)
+    assert after == before
+    assert engine._parse_marker_frontmatter(after).get("verdict") == "ESCALATE"
+
+
+# --------------------------------------------------------------------------- #
+# A3 — the advisory-TYPE registration (the pair with no drift guard)
+# --------------------------------------------------------------------------- #
+
+def test_a3_grading_is_registered_in_the_code_enum(tmp_path):
+    bk = _load_by_path("bookkeeping_invariant_under_test",
+                       HOOKS_DIR / "bookkeeping_invariant.py")
+    assert "GRADING" in bk.ADVISORY_USER_TYPES, (
+        "the advisory TYPE must be registered in the CODE — the rules-file enum "
+        "is a mirror with no drift guard behind it")
+
+    store = cgr.GradingRecordStore(tmp_path, slug="t", ts="20260101000000")
+    path = store.write("abc123", [cgr.ClaimGrade(claim_key="k", status="PASS",
+                                                 rationale="r")])
+    assert path.name == "t-20260101000000_GRADING_abc123.md"
+    membership = bk.classify(path.name)
+    assert membership.bucket == bk.B_ADVISORY
+    assert membership.slug == "t"
+
+
+def test_a3_the_rules_mirror_and_the_code_enum_agree_on_grading():
+    """The substitute for the drift guard this pair does not have — narrow, and
+    named as covering one TYPE rather than the whole enum."""
+    bk = _load_by_path("bookkeeping_invariant_under_test",
+                       HOOKS_DIR / "bookkeeping_invariant.py")
+    mirror = (CONFIG_DIR / "rules" / "bookkeeping-model.md").read_text(
+        encoding="utf-8")
+    assert "GRADING" in bk.ADVISORY_USER_TYPES
+    assert "GRADING" in mirror, (
+        "rules/bookkeeping-model.md §4 Bucket 3 does not list the GRADING "
+        "advisory TYPE the code registers")
+
+
+# =========================================================================== #
+# A4 — the floor is a property of the COMBINATION
+# =========================================================================== #
+
+def test_a4_weak_on_all_three_withholds_confirmation_and_names_the_grounds():
+    grade = icg_rule.grade_claim(_grounds(**_WEAK_AUTHORITY, **_WEAK_CURRENCY,
+                                          **_WEAK_TRACEABILITY))
+
+    assert grade.status == icg_rule.STATUS_WITHHELD
+    assert grade.grounds == {icg_rule.AXIS_AUTHORITY: icg_rule.WEAK,
+                             icg_rule.AXIS_CURRENCY: icg_rule.WEAK,
+                             icg_rule.AXIS_TRACEABILITY: icg_rule.WEAK}
+    # The reason names the ground responsible, in plain words.
+    assert "set no bound" in grade.rationale
+    assert "captured snapshot" in grade.rationale
+    assert "whole item" in grade.rationale
+
+
+@pytest.mark.parametrize("weak_axis,kwargs", [
+    (icg_rule.AXIS_AUTHORITY, _WEAK_AUTHORITY),
+    (icg_rule.AXIS_CURRENCY, _WEAK_CURRENCY),
+    (icg_rule.AXIS_TRACEABILITY, _WEAK_TRACEABILITY),
+])
+def test_a4_weak_on_exactly_one_ground_still_confirms(weak_axis, kwargs):
+    grade = icg_rule.grade_claim(_grounds(**kwargs))
+
+    assert grade.status == icg_rule.STATUS_CONFIRMS
+    assert grade.grounds[weak_axis] == icg_rule.WEAK
+    assert grade.rationale.startswith("confirmed:")
+
+
+@pytest.mark.parametrize("pair", [
+    (_WEAK_AUTHORITY, _WEAK_CURRENCY),
+    (_WEAK_AUTHORITY, _WEAK_TRACEABILITY),
+    (_WEAK_CURRENCY, _WEAK_TRACEABILITY),
+])
+def test_a4_weak_on_exactly_two_grounds_still_confirms(pair):
+    """The half a wrong implementation gets wrong: the floor is the AND of three,
+    not 'two or more'."""
+    kwargs = {}
+    for part in pair:
+        kwargs.update(part)
+    grade = icg_rule.grade_claim(_grounds(**kwargs))
+
+    assert grade.status == icg_rule.STATUS_CONFIRMS
+    weak = [a for a, v in grade.grounds.items() if v == icg_rule.WEAK]
+    assert len(weak) == 2
+    assert "not on all three" in grade.rationale
+
+
+def test_a4_strong_on_everything_confirms():
+    grade = icg_rule.grade_claim(_grounds())
+    assert grade.status == icg_rule.STATUS_CONFIRMS
+    assert set(grade.grounds.values()) == {icg_rule.STRONG}
+
+
+def test_a4_the_floor_predicate_is_the_single_decision_locus():
+    assert icg_rule.floor_withholds({a: icg_rule.WEAK for a in icg_rule.AXES})
+    for axis in icg_rule.AXES:
+        axes = {a: icg_rule.WEAK for a in icg_rule.AXES}
+        axes[axis] = icg_rule.STRONG
+        assert not icg_rule.floor_withholds(axes)
+        axes[axis] = icg_rule.UNKNOWN
+        assert not icg_rule.floor_withholds(axes), (
+            "UNKNOWN is not WEAK — a ground nobody recorded must not count "
+            "toward the floor")
+
+
+# --------------------------------------------------------------------------- #
+# A4 — the three grounds, read individually
+# --------------------------------------------------------------------------- #
+
+def test_a4_a_pre_a1_record_grades_unknown_authority_not_weak():
+    """C2: nothing that passes today starts failing because of a field that did
+    not exist when the record was written."""
+    grade = icg_rule.grade_claim(
+        _grounds(bound=None, **_WEAK_CURRENCY, **_WEAK_TRACEABILITY))
+
+    assert grade.grounds[icg_rule.AXIS_AUTHORITY] == icg_rule.UNKNOWN
+    assert grade.status == icg_rule.STATUS_CONFIRMS
+
+
+@pytest.mark.parametrize("pin,expected", [
+    ("code:r@abc:pkg/mod.py:1-400", icg_rule.WEAK),     # read whole
+    ("code:r@abc:pkg/mod.py:1", icg_rule.WEAK),         # first line, whole-file read
+    ("code:r@abc:pkg/mod.py:12-14", icg_rule.STRONG),   # narrowed
+    ("code:r@abc:pkg/mod.py:400", icg_rule.STRONG),
+])
+def test_a4_traceability_reads_a_path_shaped_locator_by_where_it_starts(pin, expected):
+    """A range starting at line 1 is what the shipped read path produces when it
+    reads a file whole; a range starting later can only have come from a
+    narrowing (design-A20's narrowed-excerpt half is unbuilt for path kinds)."""
+    grade = icg_rule.grade_claim(_grounds(pin=pin))
+    assert grade.grounds[icg_rule.AXIS_TRACEABILITY] == expected
+
+
+@pytest.mark.parametrize("pin,expected", [
+    ("linear:acme@7:ENG-14", icg_rule.WEAK),            # the whole issue
+    ("linear:acme@7:ENG-14:c99", icg_rule.STRONG),      # one comment inside it
+])
+def test_a4_traceability_reads_a_linear_locator_by_its_comment_id(pin, expected):
+    grade = icg_rule.grade_claim(_grounds(pin=pin, locator="linear"))
+    assert grade.grounds[icg_rule.AXIS_TRACEABILITY] == expected
+
+
+def test_a4_every_axis_has_a_registered_grader():
+    assert set(icg_rule.AXIS_GRADERS) == set(icg_rule.AXES)
+    assert len(icg_rule.AXES) == 3
+
+
+# --------------------------------------------------------------------------- #
+# A4 — what must never be graded, and what must never be confirmed
+# --------------------------------------------------------------------------- #
+
+def test_a4_an_ungraded_claim_is_not_confirmed_and_carries_the_reason():
+    """A2 resolves an unreachable citation to `ungraded`. It must not read as
+    confirmed — and it is not a floor hit either, since nothing was established."""
+    grade = icg_rule.grade_claim(_grounds(
+        status=icg.GROUNDS_UNGRADED, bound=None, evidence=None,
+        reason="no admission record holds this pin"))
+
+    assert grade.status == icg_rule.STATUS_WITHHELD
+    assert "no admission record" in grade.rationale
+    assert set(grade.grounds.values()) == {icg_rule.UNKNOWN}
+
+
+def test_a4_a_report_with_no_internal_claim_grades_nothing():
+    """The pure-web edge case: no claims in, no grades out, and the fold of
+    nothing is PASS — a web-only report must not degrade."""
+    assert icg_rule.grade_all([]) == ()
+    assert cgr.fold(icg_rule.grade_all([])) == "PASS"
+
+
+def test_a4_mints_no_new_verdict_token():
+    """The floor degrades through the EXISTING INCOMPLETE. A new token would need
+    a reader in every gate that consumes the ladder."""
+    import _factcheck_engine as engine
+
+    ladder = set(engine._COVERAGE_SEVERITY_RANK)
+    assert icg_rule.STATUS_WITHHELD in ladder
+    assert icg_rule.STATUS_CONFIRMS in ladder
+
+    every_shape = [
+        _grounds(),
+        _grounds(**_WEAK_AUTHORITY),
+        _grounds(**_WEAK_AUTHORITY, **_WEAK_CURRENCY),
+        _grounds(**_WEAK_AUTHORITY, **_WEAK_CURRENCY, **_WEAK_TRACEABILITY),
+        _grounds(status=icg.GROUNDS_UNGRADED, bound=None, evidence=None,
+                 reason="none"),
+        _grounds(bound=None),
+    ]
+    statuses = {g.status for g in icg_rule.grade_all(every_shape)}
+    assert statuses <= ladder
+
+
+def test_a4_holds_no_rule_bearing_io():
+    """A8's boundary, restated for the rule: it reads and returns, and opens
+    nothing. A grader that touched a store could not be reasoned about without
+    one."""
+    import ast
+
+    tree = ast.parse((HOOKS_DIR / "internal_claim_grader.py").read_text(
+        encoding="utf-8"))
+    banned = {"open", "write_text", "read_text", "mkdir", "unlink", "replace"}
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Call):
+            name = getattr(node.func, "attr", None) or getattr(node.func, "id", None)
+            assert name not in banned, (
+                f"internal_claim_grader.py calls {name!r} — the rule performs no I/O")
+
+
+# =========================================================================== #
+# A3 + A4 together — the grade a run would record
+# =========================================================================== #
+
+def test_the_grader_and_the_carrier_compose_over_a_mixed_run(tmp_path):
+    graded = icg_rule.grade_all([
+        _grounds(pin="code:r@abc:a.py:12-14"),
+        _grounds(pin="code:r@abc:b.py:1-400", **_WEAK_AUTHORITY,
+                 **_WEAK_CURRENCY),
+        _grounds(pin="code:r@abc:c.py:1-1", status=icg.GROUNDS_UNGRADED,
+                 bound=None, evidence=None, reason="no admission record"),
+    ])
+
+    store = cgr.GradingRecordStore(tmp_path, slug="t", ts="20260101000000")
+    store.write("fc-1", graded)
+    doc = store.read("fc-1")
+
+    assert doc["claim_count"] == 3
+    assert doc["folded_status"] == "INCOMPLETE"       # the worst of the three
+    assert [g.status for g in doc["grades"]] == ["PASS", "INCOMPLETE",
+                                                 "INCOMPLETE"]
+    assert all(g.rationale.strip() for g in doc["grades"])

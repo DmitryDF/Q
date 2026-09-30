@@ -1,0 +1,547 @@
+"""Gate for research-source-adapters S10 session 1 — A1 and A2.
+
+Named for what it tests, following `test_source_admission_port.py` and
+deliberately NOT `test_s10_*`: other topics in this suite number their slices
+`S<n>` too.
+
+The two actions this covers are one delivery: A1 stops the port discarding how
+narrowly a source was bounded, A2 gives the checking end a way to read that back
+from a citation. Together they are the CHANNEL — no grade is computed here, and
+none should be. A4's floor is next session's, and a test in this file that
+asserted what a claim is WORTH would be grading in the transport layer.
+
+WHAT THIS MODULE DOES NOT PROVE — stated rather than implied:
+
+* **Nothing about a verdict.** Neither action touches what a fact-check run
+  concludes. A3 builds the carrier, A4 the rule, A5 the landing; until those
+  ship, resolving a citation's grounds changes nothing a person sees.
+* **Nothing about locator fineness beyond its ARRIVAL.** The third ground rides
+  the pin string, and this file asserts it arrives intact. What counts as a fine
+  locator is a judgment (A4), so nothing here parses one.
+* **"Byte-identical admit/refuse" is proven two ways, neither of them a diff
+  against the old code.** The pre-A1 port is not on disk to diff against, so the
+  claim is carried by (i) a structural assertion that the port never BRANCHES on
+  either new field, and (ii) a behavioural assertion that the same read under
+  two different declarations yields the same pin, evidence path and content.
+  A green suite of 321 pre-existing admission tests is the third leg and lives
+  in the other files.
+* **Nothing about the store's durability.** That is S3's gate and is unchanged;
+  what is new here is one field pair round-tripping through it.
+"""
+
+from __future__ import annotations
+
+import ast
+import os
+import sys
+from pathlib import Path
+
+import pytest
+
+CONFIG_DIR = Path(os.environ.get("CLAUDE_CONFIG_DIR") or (Path.home() / ".claude"))
+HOOKS_DIR = CONFIG_DIR / "hooks"
+SKILLS_DIR = CONFIG_DIR / "skills"
+RESEARCH_DIR = SKILLS_DIR / "research"
+
+sys.path.insert(0, str(HOOKS_DIR))
+sys.path.insert(0, str(SKILLS_DIR))
+
+import internal_claim_grounds as icg                   # noqa: E402
+from research import admission_record as arec          # noqa: E402
+from research import locator_grammar as lg             # noqa: E402
+from research import scope_record as srec              # noqa: E402
+from research import source_port as sp                 # noqa: E402
+
+
+# --------------------------------------------------------------------------- #
+# Fixtures — the gate's own prescription: the real port over the side-effect-free
+# store, driven by the deterministic adapter. No disk, no clock, no network.
+# --------------------------------------------------------------------------- #
+
+@pytest.fixture()
+def store():
+    return arec.InMemoryAdmissionRecordStore()
+
+
+@pytest.fixture()
+def port(store):
+    return sp.AdmissionPort(store)
+
+
+def _item(target="/lib/pkg/mod.py"):
+    return sp.SourceItem(item_id=str(target), kind=srec.KIND_CODE,
+                         target=str(target), depth=0)
+
+
+def _read(content="one\ntwo\n", *, dirty=False, path="pkg/mod.py",
+          lines="1-2", source_id="myrepo", version="abc123"):
+    return sp.ReadResult(source_id=source_id, version=version,
+                         locator=lg.code_locator(path, lines),
+                         content=content, dirty=dirty)
+
+
+def _adapter(item, read, *, can_reopen=True):
+    return sp.FakeAdapter(items=(item,), reads={item.item_id: read},
+                          can_reopen_without_credentials=can_reopen)
+
+
+def _unscoped_code_scope():
+    """An unscoped `code` declaration.
+
+    Hand-built because `code_scope()` cannot express one — every convenience
+    constructor for a path-shaped kind is enumerated by design. The mode is what
+    is under test, so it has to be stated rather than borrowed.
+    """
+    return srec.ScopeRecord(sources=(
+        srec.DeclaredSource(kind=srec.KIND_CODE,
+                            scope_mode=srec.SCOPE_MODE_UNSCOPED),))
+
+
+# =========================================================================== #
+# A1 — the port records how narrowly the source was bounded
+# =========================================================================== #
+
+def test_a1_an_enumerated_declaration_is_recorded_with_the_selector_that_matched(
+        port, store, tmp_path):
+    lib = tmp_path / "lib"
+    (lib / "pkg").mkdir(parents=True)
+    target = lib / "pkg" / "mod.py"
+    target.write_text("one\ntwo\n", encoding="utf-8")
+    item = _item(target)
+    result = port.admit(item, srec.code_scope([lib]), _adapter(item, _read()),
+                        "run-1")
+
+    assert result.admitted
+    assert result.declaration_bound == srec.SCOPE_MODE_ENUMERATED
+    assert result.matched_selector == str(lib.resolve())
+
+
+def test_a1_an_unscoped_declaration_is_recorded_as_unscoped_with_no_selector(
+        port, store):
+    item = _item()
+    result = port.admit(item, _unscoped_code_scope(), _adapter(item, _read()),
+                        "run-1")
+
+    assert result.admitted
+    assert result.declaration_bound == srec.SCOPE_MODE_UNSCOPED
+    # No selector was consulted, so naming one would be an invention.
+    assert result.matched_selector is None
+
+
+def test_a1_the_evidence_entry_round_trips_the_bound_through_the_store(
+        port, store, tmp_path):
+    lib = tmp_path / "lib"
+    (lib / "pkg").mkdir(parents=True)
+    target = lib / "pkg" / "mod.py"
+    target.write_text("one\ntwo\n", encoding="utf-8")
+    item = _item(target)
+    result = port.admit(item, srec.code_scope([lib]), _adapter(item, _read()),
+                        "run-1")
+
+    # Retrieved through the store's own serialization, not from the result.
+    entry = store.get_evidence(result.pin_str)
+    assert entry is not None
+    assert entry.declaration_bound == srec.SCOPE_MODE_ENUMERATED
+    assert entry.matched_selector == str(lib.resolve())
+
+
+def test_a1_the_bound_survives_a_real_on_disk_store(tmp_path):
+    """The in-memory store round-trips through `to_dict`; this one through a file."""
+    disk = arec.AdmissionRecordStore(tmp_path / "records", slug="t",
+                                     ts="20260101000000")
+    lib = tmp_path / "lib"
+    (lib / "pkg").mkdir(parents=True)
+    target = lib / "pkg" / "mod.py"
+    target.write_text("one\ntwo\n", encoding="utf-8")
+    item = _item(target)
+    result = sp.AdmissionPort(disk).admit(
+        item, srec.code_scope([lib]), _adapter(item, _read()), "run-1")
+
+    reread = arec.AdmissionRecordStore(tmp_path / "records", slug="t",
+                                       ts="20260101000000")
+    entry = reread.get_evidence(result.pin_str)
+    assert entry is not None
+    assert entry.declaration_bound == srec.SCOPE_MODE_ENUMERATED
+
+
+def test_a1_a_record_written_before_a1_still_loads_and_says_it_does_not_know():
+    """A pre-A1 record has neither key. It must load, and must NOT read as unscoped.
+
+    "Nobody recorded a bound" and "the person declared no bound" are different
+    facts; collapsing them would let a legacy record answer a question it was
+    never asked.
+    """
+    entry = arec.EvidenceEntry.from_dict({
+        "run_id": "old-run",
+        "pin_str": "code:myrepo@abc123:pkg/mod.py:1-2",
+        "evidence_path": arec.EVIDENCE_CAPTURED,
+        "excerpt": "one\ntwo\n",
+        "at": "2026-01-01T00:00:00+00:00",
+    })
+    assert entry.declaration_bound is None
+    assert entry.matched_selector is None
+    assert entry.declaration_bound != srec.SCOPE_MODE_UNSCOPED
+
+
+def test_a1_a_degraded_item_carries_no_bound_because_no_declaration_admitted_it(
+        port, tmp_path):
+    lib = tmp_path / "lib"
+    lib.mkdir()
+    outside = tmp_path / "elsewhere" / "mod.py"
+    outside.parent.mkdir()
+    outside.write_text("x\n", encoding="utf-8")
+    item = _item(outside)
+    result = port.admit(item, srec.code_scope([lib]), _adapter(item, _read()),
+                        "run-1")
+
+    assert not result.admitted
+    assert result.declaration_bound is None
+    assert result.matched_selector is None
+
+
+def test_a1_the_port_carries_the_bound_and_never_branches_on_it():
+    """A8, structurally: the rule that judges the grounds may not live in the port.
+
+    An AST scan of every branch condition in `source_port.py`. A field that is
+    only ever WRITTEN cannot change what admit/refuse decides — which is what
+    "admit/refuse byte-identical" means at the code level, and is checkable
+    without the pre-A1 file to diff against.
+    """
+    tree = ast.parse((RESEARCH_DIR / "source_port.py").read_text(encoding="utf-8"))
+    guarded = {"declaration_bound", "matched_selector"}
+    offenders = []
+    for node in ast.walk(tree):
+        tests = []
+        if isinstance(node, (ast.If, ast.While, ast.IfExp)):
+            tests = [node.test]
+        elif isinstance(node, ast.comprehension):
+            tests = list(node.ifs)
+        elif isinstance(node, ast.Assert):
+            tests = [node.test]
+        for test in tests:
+            for sub in ast.walk(test):
+                name = None
+                if isinstance(sub, ast.Attribute):
+                    name = sub.attr
+                elif isinstance(sub, ast.Name):
+                    name = sub.id
+                if name in guarded:
+                    offenders.append((name, getattr(node, "lineno", "?")))
+    assert not offenders, (
+        f"source_port.py branches on a recorded ground: {offenders}. The port "
+        "records the grounds; the grader judges them (design-A8).")
+
+
+def test_a1_the_same_read_under_two_declarations_differs_only_in_the_bound(
+        tmp_path):
+    """The behavioural half of "byte-identical": the decision, the pin, the
+    evidence path and the content are untouched by which declaration admitted it."""
+    lib = tmp_path / "lib"
+    (lib / "pkg").mkdir(parents=True)
+    target = lib / "pkg" / "mod.py"
+    target.write_text("one\ntwo\n", encoding="utf-8")
+
+    def _run(scope):
+        item = _item(target)
+        return sp.AdmissionPort(arec.InMemoryAdmissionRecordStore()).admit(
+            item, scope, _adapter(item, _read()), "run-1")
+
+    enumerated = _run(srec.code_scope([lib]))
+    unscoped = _run(_unscoped_code_scope())
+
+    assert enumerated.admitted and unscoped.admitted
+    assert enumerated.pin_str == unscoped.pin_str
+    assert enumerated.evidence_path == unscoped.evidence_path
+    assert enumerated.content == unscoped.content
+    assert enumerated.truncated == unscoped.truncated
+    assert enumerated.declaration_bound != unscoped.declaration_bound
+
+
+def test_a1_the_recorded_bound_is_the_one_that_admitted_it_not_the_first_declared(
+        tmp_path):
+    """Two declarations of the same kind; the SECOND one contains the target.
+
+    The bound is read off the very check result the admit branch decided on, so
+    it cannot drift to a declaration that refused this item.
+    """
+    a = tmp_path / "a"
+    b = tmp_path / "b"
+    (a / "pkg").mkdir(parents=True)
+    (b / "pkg").mkdir(parents=True)
+    target = b / "pkg" / "mod.py"
+    target.write_text("one\ntwo\n", encoding="utf-8")
+    scope = srec.ScopeRecord(sources=(
+        srec.DeclaredSource(kind=srec.KIND_CODE,
+                            scope_mode=srec.SCOPE_MODE_ENUMERATED,
+                            selectors=(str(a),)),
+        srec.DeclaredSource(kind=srec.KIND_CODE,
+                            scope_mode=srec.SCOPE_MODE_ENUMERATED,
+                            selectors=(str(b),)),))
+    item = _item(target)
+    result = sp.AdmissionPort(arec.InMemoryAdmissionRecordStore()).admit(
+        item, scope, _adapter(item, _read()), "run-1")
+
+    assert result.matched_selector == str(b.resolve())
+
+
+# =========================================================================== #
+# A2 — the extraction: the payload the shipped marker parser discards
+# =========================================================================== #
+
+def test_a2_the_internal_locators_are_derived_from_the_citation_registry():
+    import _factcheck_engine as engine
+
+    expected = {m.locator for m in engine.CITATION_MARKER_REGISTRY
+                if m.source_class == "internal" and m.locator}
+    assert set(icg.internal_locators()) == expected
+    # The shipped internal vocabulary, named so a silent shrink is visible here.
+    assert {"code", "linear", "local-file"} <= set(icg.internal_locators())
+    # Web is not internal and must not be swept in.
+    assert "url" not in icg.internal_locators()
+
+
+@pytest.mark.parametrize("payload", [
+    "code:myrepo@abc123:pkg/mod.py:1-2",
+    "linear:acme@7:ENG-14",
+    "local-file:Docs/notes.md:12",
+])
+def test_a2_every_internal_locator_form_is_extracted_whole(payload):
+    found = icg.extract_internal_citations(f"A claim. [stated — {payload}]")
+    assert len(found) == 1
+    assert found[0].pin_str == payload
+
+
+def test_a2_a_web_citation_is_not_extracted_as_internal():
+    text = "A claim. [stated — https://example.com/docs/a]"
+    assert icg.extract_internal_citations(text) == ()
+
+
+def test_a2_markers_that_name_no_source_are_not_extracted():
+    """`inferred`, `my assessment` and `unverified` carry a free-text slot and no
+    locator. Resolving them would invent a source they never claimed."""
+    text = "\n".join([
+        "A. [inferred from internal sources]",
+        "B. [My assessment: this is thin]",
+        "C. [unverified — not found in internal knowledge base]",
+    ])
+    assert icg.extract_internal_citations(text) == ()
+
+
+def test_a2_both_sourced_kinds_are_extracted_and_reported_by_kind():
+    text = "\n".join([
+        "A. [stated — code:r@1:a.py:1-1]",
+        "B. [paraphrased — code:r@1:b.py:2-2]",
+    ])
+    found = icg.extract_internal_citations(text)
+    assert [c.kind for c in found] == ["stated", "paraphrased"]
+    assert [c.line for c in found] == [1, 2]
+
+
+def test_a2_the_locator_the_shipped_parser_discards_arrives_intact():
+    """The third ground: fineness rides the pin's tail, which `_claim_harvest`
+    drops. Two citations differing ONLY in that tail must stay distinguishable."""
+    import _claim_harvest as harvest
+
+    whole = "code:r@1:pkg/mod.py:1-400"
+    narrow = "code:r@1:pkg/mod.py:12-14"
+    text = f"A. [stated — {whole}]\nB. [stated — {narrow}]"
+
+    # What the shipped parser keeps: it SEES both citations and keeps no payload
+    # for either. The count is asserted first — `all()` over an empty list is
+    # true, which would pass this for the opposite reason.
+    shipped = harvest.extract_marked_claims(text)["stated"]
+    assert len(shipped) == 2
+    assert all(c["url"] is None for c in shipped)
+    # What A2 keeps.
+    assert [c.pin_str for c in icg.extract_internal_citations(text)] == [whole,
+                                                                        narrow]
+
+
+# =========================================================================== #
+# A2 — the coupling: the marker payload IS the store's key
+# =========================================================================== #
+
+def _admit_one(port, tmp_path):
+    lib = tmp_path / "lib"
+    (lib / "pkg").mkdir(parents=True)
+    target = lib / "pkg" / "mod.py"
+    target.write_text("one\ntwo\n", encoding="utf-8")
+    item = _item(target)
+    return port.admit(item, srec.code_scope([lib]), _adapter(item, _read()),
+                      "run-1")
+
+
+def test_a2_the_marker_payload_equals_the_key_admit_wrote(port, store, tmp_path):
+    """The coupling, pinned so a divergence is a red test rather than silence.
+
+    Neither half is derived from the other: the KEY comes from driving `admit()`
+    (which is what exercises the port), and the PAYLOAD comes from A2's own
+    extraction over the marker `SourcePin.marker()` renders. Deriving the key
+    from `pin.render()` would leave the port untested; re-deriving the payload
+    from a format string would make the assertion a tautology.
+    """
+    result = _admit_one(port, tmp_path)
+    key = result.pin_str
+
+    found = icg.extract_internal_citations(
+        f'The module opens with "one". {result.pin.marker("stated")}')
+
+    assert len(found) == 1
+    assert found[0].pin_str == key
+    assert store.get_evidence(found[0].pin_str) is not None
+
+
+def test_a2_the_coupling_assertion_fails_when_marker_and_pin_str_diverge(
+        port, store, tmp_path, monkeypatch):
+    """Proves the assertion above is load-bearing rather than trivially true.
+
+    With `marker()` no longer wrapping `render()`, the extracted payload stops
+    matching the key — and the lookup comes back empty rather than resolving to
+    the wrong entry.
+    """
+    result = _admit_one(port, tmp_path)
+    key = result.pin_str
+
+    def _diverged(self, kind="stated"):
+        # Drops the locator tail — the shape a careless marker change produces.
+        return f"[{kind} — {self.locator.kind}:{self.source_id}@{self.version}]"
+
+    monkeypatch.setattr(sp.SourcePin, "marker", _diverged)
+    found = icg.extract_internal_citations(
+        f'A claim. {result.pin.marker("stated")}')
+
+    assert len(found) == 1
+    assert found[0].pin_str != key
+    assert store.get_evidence(found[0].pin_str) is None
+
+
+# =========================================================================== #
+# A2 — resolution: fail-soft, never a false confirmation
+# =========================================================================== #
+
+def test_a2_a_declared_read_resolves_all_three_grounds(port, store, tmp_path):
+    result = _admit_one(port, tmp_path)
+    text = f'The module opens with "one". {result.pin.marker("stated")}'
+
+    grounds = icg.read_internal_grounds(text, store)
+
+    assert len(grounds) == 1
+    g = grounds[0]
+    assert g.status == icg.GROUNDS_RESOLVED
+    assert g.declaration_bound == srec.SCOPE_MODE_ENUMERATED   # ground 1
+    assert g.evidence_path in arec.EVIDENCE_PATHS              # ground 2
+    assert g.citation.pin_str == result.pin_str                # ground 3 rides here
+    assert g.reason is None
+
+
+def test_a2_an_unmatched_citation_is_ungraded_not_confirmed_and_does_not_crash(
+        store):
+    text = "A claim nobody read. [stated — code:ghost@000:no/such.py:1-1]"
+
+    grounds = icg.read_internal_grounds(text, store)
+
+    assert len(grounds) == 1
+    assert grounds[0].status == icg.GROUNDS_UNGRADED
+    assert not grounds[0].resolved
+    assert grounds[0].declaration_bound is None
+    assert grounds[0].evidence_path is None
+    assert "no admission record" in grounds[0].reason
+
+
+def test_a2_an_unreadable_store_yields_ungraded_rather_than_raising():
+    """Detection sits on top of containment: a fact-check must not fail because
+    an admission record could not be read."""
+
+    class _Broken:
+        def get_evidence(self, pin_str, run_id=None):
+            raise OSError("record file is unreadable")
+
+    grounds = icg.read_internal_grounds(
+        "A. [stated — code:r@1:a.py:1-1]", _Broken())
+
+    assert grounds[0].status == icg.GROUNDS_UNGRADED
+    assert "could not be read" in grounds[0].reason
+
+
+def test_a2_a_pure_web_report_touches_the_store_not_at_all():
+    class _Tripwire:
+        def get_evidence(self, pin_str, run_id=None):    # pragma: no cover
+            raise AssertionError("a web-only report must not query the record")
+
+    text = "A. [stated — https://example.com/a]\nB. [My assessment: fine]"
+    assert icg.read_internal_grounds(text, _Tripwire()) == ()
+
+
+def test_a2_resolution_is_by_pin_and_finds_an_entry_from_any_run(port, store,
+                                                                 tmp_path):
+    """A later reader holds the citation, not the run identity.
+
+    The entry is written under `run-1`; the resolution names no run and must
+    still find it — which is what "resolve BY PIN, not run id" buys.
+    """
+    result = _admit_one(port, tmp_path)
+    # A second, unrelated run in the same store.
+    store.put_evidence(arec.EvidenceEntry(
+        run_id="run-2", pin_str="code:other@1:z.py:1-1",
+        evidence_path=arec.EVIDENCE_CAPTURED, excerpt="z"))
+
+    grounds = icg.read_internal_grounds(
+        f'A. {result.pin.marker("stated")}', store)
+
+    assert grounds[0].status == icg.GROUNDS_RESOLVED
+
+
+def test_a2_a_pre_a1_entry_resolves_but_reports_an_unknown_bound(store):
+    """The two absences stay distinguishable end to end: the citation RESOLVES
+    (an entry exists) while its bound reports nothing (nobody recorded one)."""
+    store.put_evidence(arec.EvidenceEntry(
+        run_id="old", pin_str="code:r@1:a.py:1-1",
+        evidence_path=arec.EVIDENCE_CAPTURED, excerpt="a"))
+
+    grounds = icg.read_internal_grounds("A. [stated — code:r@1:a.py:1-1]", store)
+
+    assert grounds[0].status == icg.GROUNDS_RESOLVED
+    assert grounds[0].declaration_bound is None
+
+
+def test_a2_summarize_counts_both_outcomes(port, store, tmp_path):
+    result = _admit_one(port, tmp_path)
+    text = "\n".join([
+        f'A. {result.pin.marker("stated")}',
+        "B. [stated — code:ghost@000:no/such.py:1-1]",
+    ])
+
+    counts = icg.summarize(icg.read_internal_grounds(text, store))
+
+    assert counts == {"internal_citations": 2,
+                      icg.GROUNDS_RESOLVED: 1,
+                      icg.GROUNDS_UNGRADED: 1}
+
+
+def test_a2_get_evidence_now_has_a_production_caller():
+    """A2's headline, asserted rather than asserted-in-prose.
+
+    The accessor shipped at S3 and sat with zero production callers for four
+    slices. A scan over production modules — tests excluded, since a test caller
+    is exactly what it already had — must find at least one, and it must not be
+    the module that defines it.
+    """
+    definer = (RESEARCH_DIR / "admission_record.py").resolve()
+    callers = []
+    for root in (HOOKS_DIR, SKILLS_DIR):
+        for path in root.rglob("*.py"):
+            parts = set(path.parts)
+            if "tests" in parts or "__pycache__" in parts:
+                continue
+            if path.resolve() == definer:
+                continue
+            try:
+                text = path.read_text(encoding="utf-8")
+            except OSError:                              # pragma: no cover
+                continue
+            if ".get_evidence(" in text:
+                callers.append(path.name)
+
+    assert callers, ("get_evidence still has no production caller; A2 is what "
+                     "gives it one")
+    assert "internal_claim_grounds.py" in callers
