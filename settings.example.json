@@ -194,6 +194,33 @@
         ]
       },
       {
+        "matcher": "Skill",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${KIT_HOOKS_DIR}/check-execplan-session-ack.sh"
+          }
+        ]
+      },
+      {
+        "matcher": "Edit|Write|Bash|Agent",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${KIT_HOOKS_DIR}/check-execplan-entry-gate.sh"
+          }
+        ]
+      },
+      {
+        "matcher": "Edit|Write|Bash|Agent",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${KIT_HOOKS_DIR}/check-execplan-walk-gate.sh"
+          }
+        ]
+      },
+      {
         "matcher": "Edit|Write",
         "hooks": [
           {
@@ -282,6 +309,10 @@
           {
             "type": "command",
             "command": "${KIT_HOOKS_DIR}/check-phase-gate.sh"
+          },
+          {
+            "type": "command",
+            "command": "${KIT_HOOKS_DIR}/execplan-stop-handoff.sh"
           }
         ]
       }
@@ -410,6 +441,10 @@
           {
             "type": "command",
             "command": "${KIT_HOOKS_DIR}/clear-post-plan-marker.sh"
+          },
+          {
+            "type": "command",
+            "command": "${KIT_HOOKS_DIR}/clear-execplan-session-ack.sh"
           }
         ]
       },
@@ -442,6 +477,18 @@
           {
             "type": "command",
             "command": "${KIT_HOOKS_DIR}/cleanup-stale-verifier-isolation.sh"
+          },
+          {
+            "type": "command",
+            "command": "${KIT_HOOKS_DIR}/execplan-scan-pending.sh"
+          },
+          {
+            "type": "command",
+            "command": "${KIT_HOOKS_DIR}/execplan-scan-unarmed.sh"
+          },
+          {
+            "type": "command",
+            "command": "${KIT_HOOKS_DIR}/execplan-gc.sh"
           },
           {
             "type": "command",

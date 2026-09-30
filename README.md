@@ -97,6 +97,7 @@ hard-fails if it names a different one.
 - The research pipeline manifest, scope gate and source adapters.
 - Handoff composition, land-readiness and cross-session resume.
 - Gate 0-3 enforcement on plan mode.
+- The plan-execution engine (module ships before its skill — see A6).
 
 ---
 
