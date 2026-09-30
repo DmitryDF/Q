@@ -49,6 +49,15 @@ jobs:
           # already has one and overwriting it is hostile.
           test ! -f CLAUDE.md || { echo "CLAUDE.md must NOT ship — setup.sh asks instead"; exit 1; }
 
+      - name: The kit's own verifier — the command INSTALL.md tells adopters to run
+        run: |
+          # It used to FATAL here: verify_kit.py was written for the one-shot
+          # builder and required its `kit.manifest.json`, which a release tree does
+          # not have. So the command in INSTALL.md step 8 failed on the tree it
+          # shipped in, and nothing noticed because CI never ran it. Now it runs on
+          # every push, which is the only way that stays true.
+          python3 verify_kit.py . --no-explore
+
       - name: Every gate is syntactically sound
         run: |
           shopt -s nullglob

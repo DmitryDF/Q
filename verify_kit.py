@@ -42,11 +42,31 @@ BUNDLES_YAML = SKILL_DIR / "bundles.yaml"
 
 AUTHOR_TOKEN_RE = re.compile(
     r"/Users/[A-Z][^/\s\n\"']{2,}"  # /Users/<AnyName>
-    r"|iCloud~md~obsidian"
     r"|private_project"
     r"|Frikh-Khar"
     r"|(?<!\[)EMPLOYER/"  # employer folder name (not inside a [...] placeholder)
 )
+# `iCloud~md~obsidian` was in this pattern and has been removed: it is Obsidian's
+# own iCloud container name, identical for every Obsidian user on macOS, so it
+# identifies the APPLICATION and not a person. Flagging it produced two findings
+# that could never be fixed (a comment in `sanitize-bash.sh` explaining the token,
+# and a test fixture using it) and no privacy benefit.
+
+# TWO EXCLUSION SETS, for two different reasons — the same split the CI leak gate
+# makes, and for the same cause.
+#
+#   ATTRIBUTION_SURFACES  LICENSE, NOTICES.md, README.md and INSTALL.md may NAME the
+#                         author: the MIT notice requires it and NOTICES exists to
+#                         say "original work by <author>". They are excluded from
+#                         the author-name check only.
+#
+#   GATE_FILES            A FILE WHOSE JOB IS TO DETECT A STRING MUST CONTAIN THAT
+#                         STRING. This script carries the patterns it greps for, and
+#                         so does the CI workflow. Excluded entirely, or neither can
+#                         ever pass. (Fifth instance of this class in this release;
+#                         it is written out here so the sixth is recognised faster.)
+ATTRIBUTION_SURFACES = frozenset({"LICENSE", "NOTICES.md", "README.md", "INSTALL.md"})
+GATE_FILES = frozenset({"verify_kit.py", ".github/workflows/verify.yml", ".gitleaks.toml"})
 
 BINARY_SUFFIXES = frozenset({
     ".png", ".jpg", ".jpeg", ".gif", ".pdf", ".zip",
@@ -96,11 +116,16 @@ def check_author_tokens(kit: Path) -> list[str]:
             text = path.read_text(encoding="utf-8", errors="replace")
         except Exception:
             continue
-        rel = str(path.relative_to(kit))
+        rel = path.relative_to(kit).as_posix()
+        if rel in GATE_FILES:
+            continue
         for i, line in enumerate(text.splitlines(), 1):
-            if AUTHOR_TOKEN_RE.search(line):
-                snippet = line.strip()[:80]
-                failures.append(f"AUTHOR-TOKEN {rel}:{i}: {snippet}")
+            if not AUTHOR_TOKEN_RE.search(line):
+                continue
+            if rel in ATTRIBUTION_SURFACES and "Frikh-Khar" in line:
+                continue  # the attribution these files exist to carry
+            snippet = line.strip()[:80]
+            failures.append(f"AUTHOR-TOKEN {rel}:{i}: {snippet}")
     return failures
 
 
@@ -110,7 +135,9 @@ def check_structure(kit: Path) -> list[str]:
     # none, because an adopter already has one and overwriting it is hostile.
     # setup.sh asks before appending three import lines to theirs. Leaving it in this
     # tuple made the gate fail on every push of a kit that is correct.
-    for required in ("kit.manifest.json", ".gitignore", "README.md"):
+    # `kit.manifest.json` is deliberately NOT required: a release tree has none
+    # (see main()). Requiring it here would re-fail what main() just made optional.
+    for required in (".gitignore", "README.md"):
         if not (kit / required).exists():
             failures.append(f"MISSING: {required}")
     return failures
@@ -298,34 +325,59 @@ def main() -> None:
         print(f"ERROR: not a directory: {kit}", file=sys.stderr)
         sys.exit(2)
 
+    # A MANIFEST IS OPTIONAL, and its absence is not a failure.
+    #
+    # This script was written for the one-shot builder, which writes
+    # `kit.manifest.json`. A RELEASE tree is assembled a push at a time from the
+    # register instead and carries no manifest — so on the repo this file actually
+    # ships in, `verify_kit.py .` printed FATAL and exited 2. INSTALL.md step 8
+    # tells the adopter's agent to run exactly that command, which means the
+    # shipped instructions failed on the shipped tree. Found by the closing
+    # checklist, not by any gate.
+    #
+    # The manifest-dependent checks (file presence, executability, dependency
+    # closure, the README-vs-manifest Explore pass) are SKIPPED and named as
+    # skipped; the tree-only checks — author tokens, structure, git cleanliness,
+    # placeholder hook refs — run either way. Silently passing a subset would be
+    # worse than the FATAL; saying which checks did not run is the honest form.
     manifest_path = kit / "kit.manifest.json"
-    if not manifest_path.exists():
-        print(f"FATAL: kit.manifest.json not found in {kit}", file=sys.stderr)
-        print("  Run: python3 build_kit.py build --output <dir> first", file=sys.stderr)
-        sys.exit(2)
-
-    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    manifest = None
+    if manifest_path.exists():
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
 
     print(f"Verifying kit: {kit}")
-    print(f"  Files in manifest : {len(manifest.get('files', []))}")
-    print(f"  Resolved bundles  : {', '.join(manifest.get('resolved_bundles', []))}")
-    print(f"  Built at          : {manifest.get('built_at', 'unknown')}")
+    if manifest is None:
+        print("  No kit.manifest.json — this is a release tree, assembled from the")
+        print("  push register rather than by build_kit.py. Manifest-dependent")
+        print("  checks are SKIPPED below; the tree-only checks still run.")
+    else:
+        print(f"  Files in manifest : {len(manifest.get('files', []))}")
+        print(f"  Resolved bundles  : {', '.join(manifest.get('resolved_bundles', []))}")
+        print(f"  Built at          : {manifest.get('built_at', 'unknown')}")
     print()
 
     all_failures: dict[str, list[str]] = {}
 
-    run_check("File presence", check_file_presence(kit, manifest), all_failures)
-    run_check("Executability", check_executability(kit, manifest), all_failures)
+    if manifest is None:
+        for name in ("File presence", "Executability", "Dependency closure"):
+            print(f"  SKIP  {name} (needs kit.manifest.json)")
+    else:
+        run_check("File presence", check_file_presence(kit, manifest), all_failures)
+        run_check("Executability", check_executability(kit, manifest), all_failures)
+        run_check("Dependency closure", check_dep_closure(manifest), all_failures)
+
     run_check("Author token leak", check_author_tokens(kit), all_failures)
     run_check("Kit structure", check_structure(kit), all_failures)
     run_check("Git cleanliness", check_git_cleanliness(kit), all_failures)
-    run_check("Dependency closure", check_dep_closure(manifest), all_failures)
     run_check("Placeholder hook refs", check_only_placeholder_hook_refs(kit), all_failures)
 
     if not args.no_explore:
-        explore_failures = check_explore_readme(kit, manifest)
-        if explore_failures:
-            all_failures["Explore README check"] = explore_failures
+        if manifest is None:
+            print("  SKIP  Explore README check (needs kit.manifest.json)")
+        else:
+            explore_failures = check_explore_readme(kit, manifest)
+            if explore_failures:
+                all_failures["Explore README check"] = explore_failures
 
     print()
     if all_failures:
