@@ -1,0 +1,37 @@
+# gitleaks configuration for the Q repo.
+#
+# The default ruleset stays ON. This file adds one narrow allowlist, for a
+# false positive that is worth recording rather than silencing broadly.
+#
+# WHAT HAPPENED. The `tests` push ships `hooks/tests/test_s8_composed_walk.py`,
+# whose fixtures name lock files:
+#
+#     key        = "s8-walk__proj"
+#     live_key   = "s8-live__proj"
+#     legacy_key = "s8-legacy__proj"
+#
+# gitleaks' `generic-api-key` rule matches on a variable named `*key` assigned a
+# quoted string with enough entropy, so all three fired. They are lock-file KEY
+# NAMES — the word "key" in the sense of a dictionary key — and carry no
+# credential. Verified by reading the file: each value is interpolated into
+# `<key>.lock` and written to a temporary sandbox directory.
+#
+# WHY THE ALLOWLIST IS A VALUE PATTERN AND NOT A PATH. Allowlisting
+# `hooks/tests/` would exempt 238 files from secret scanning, so a real
+# credential pasted into any future test would ship silently. The regex below
+# matches only this fixture's own shape, so anything else in the same file — and
+# every other file — is still scanned.
+#
+# HOW TO EXTEND THIS. Add a regex for the specific literal, with the reason it is
+# not a secret, the same way this entry does. Do not add a path, and do not
+# disable a rule.
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Lock-file key names in the composed-walk test fixture (not credentials)"
+regexTarget = "match"
+regexes = [
+  '''s8-[a-z]+__proj''',
+]

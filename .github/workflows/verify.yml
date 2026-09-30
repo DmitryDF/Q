@@ -136,6 +136,11 @@ jobs:
         uses: gitleaks/gitleaks-action@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # The default ruleset plus one narrow, documented allowlist. Named
+          # explicitly rather than relying on auto-detection, so a rename of the
+          # file fails loudly instead of silently reverting to bare defaults —
+          # which would re-fail the push it was added for.
+          GITLEAKS_CONFIG: ${{ github.workspace }}/.gitleaks.toml
 
       - name: Install smoke — into a sandbox, never the runner's real config
         run: |
