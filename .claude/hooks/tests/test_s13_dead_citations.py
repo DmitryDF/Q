@@ -639,7 +639,7 @@ def test_a8_the_file_holding_the_only_dead_citation_is_reached():
     """Without reach the whole chain runs on 40% of the corpus's internal
     citations and on NONE of its dead ones — a correct check that never meets
     the problem."""
-    dead_file = str(Path.home() / "repos" / "Projects" / "Example" /
+    dead_file = str(Path.home() / "repos" / "Projects" / "[YourProject]" /
                     "Onboarding v2" / "tax-registration-20260830152212_RESEARCH.md")
     assert _hook_admits(dead_file), (
         "the file holding the corpus's only dead internal citation is not "

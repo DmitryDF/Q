@@ -132,7 +132,7 @@ RESEARCH_FILENAMES = [
     pytest.param("foo-20260101000000_H_v2_B1_RESEARCH.md", id="multi-segment-scope"),
     pytest.param("Visuals_RESEARCH.md", id="uppercase-and-untimestamped"),
     pytest.param(
-        "Example_cockpit-error-handling_RESEARCH.md",
+        "[YourProject]_cockpit-error-handling_RESEARCH.md",
         id="uppercase-underscore-bearing",
     ),
     pytest.param("ALPHA-20260101000000_RESEARCH.md", id="uppercase-slug"),

@@ -15,5 +15,13 @@ Diary/*.md
 Thoughts/*.md
 !Thoughts/README.md
 
+# Tool caches — these are generated, and one of them (a pytest cache naming
+# internal test ids) shipped once before this line existed.
+__pycache__/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.pyc
+
 # OS files
 .DS_Store
