@@ -143,7 +143,7 @@ If the user has no preference, use `standard` and tell them you did.
 
 ## Step 6 — Merge the hook registrations
 
-Hooks are what turn these skills from advice into gates. This release registers **142 hooks**. `settings.example.json` is generated from exactly the set in this tree, so a registration never points at a hook that is not here.
+Hooks are what turn these skills from advice into gates. This release ships **142 hook scripts**. `settings.example.json` registers exactly those of them that are present in this tree — a registration never points at a hook that is not here, and a hook this release does not contain is never registered. Some scripts ship without a registration because the event that drives them belongs to a later push; the command below prints what is actually wired.
 
 ```bash
 cp "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/settings.json" \

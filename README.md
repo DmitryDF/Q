@@ -1,4 +1,4 @@
-# Q — clarification → research → solution-design → plan → execution. Loop.
+# Q — a spec-driven development system: clarification → research → solution-design → plan → execution. Loop.
 
 Q is a **spec-driven development system**. It turns a raw idea into a written spec —
 a locked Discovery contract, then a design, then a plan — and then implements that
