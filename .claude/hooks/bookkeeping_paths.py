@@ -178,7 +178,7 @@ def gitattributes_lines(manifest: Optional[dict] = None) -> list[str]:
 # A5 — commit classification
 # ══════════════════════════════════════════════════════════════════════════
 
-def _config_source_path() -> Optional[Path]:
+def _config_source_source_path() -> Optional[Path]:
     """Resolve the configured source path, or None if config-source is unavailable.
 
     Overridable via Q_CONFIG_SOURCE_PATH so the V1 scratch test can simulate a
@@ -202,8 +202,8 @@ def _config_source_path() -> Optional[Path]:
     return None
 
 
-def is_config_source_repo(repo_root: Path) -> bool:
-    src = _config_source_path()
+def is_config_source_source_repo(repo_root: Path) -> bool:
+    src = _config_source_source_path()
     if src is None:
         return False
     try:
@@ -226,7 +226,7 @@ def classify_commit(
       "none"             — no shared paths at all; ordinary out-of-tree block.
     """
     m = manifest if manifest is not None else load_manifest()
-    if is_config_source_repo(repo_root):
+    if is_config_source_source_repo(repo_root):
         return "harness"
     changed = [p for p in changed_rel_paths if p.strip()]
     if not changed:

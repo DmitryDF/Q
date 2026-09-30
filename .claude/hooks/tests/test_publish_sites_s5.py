@@ -213,7 +213,7 @@ def test_starter_kit_never_writes_to_the_frozen_claude_repo():
         "6a must not prescribe a hand-composed git commit"
 
 
-def test_starter_kit_tag_lands_in_the_config-source_source():
+def test_starter_kit_tag_lands_in_the_config_source_source():
     sec = _kit_section_6a()
     assert "git -C <config-source-repo> tag starter-kit-vN main" in sec
     assert "git -C <config-source-repo> push origin starter-kit-vN" in sec

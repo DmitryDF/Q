@@ -1176,7 +1176,7 @@ class AttributeCommitsImplSpecificsTests(unittest.TestCase):
         self.assertEqual(tm._impl_specifics_scope_for(spine), set())
 
     # --- loose matcher matrix ---
-    def test_loose_match_bare_basename_config-source(self):
+    def test_loose_match_bare_basename_config_source(self):
         self.assertTrue(tm._loose_scope_match(
             "dot_claude/hooks/work_done.py", {"work_done.py"}))
 

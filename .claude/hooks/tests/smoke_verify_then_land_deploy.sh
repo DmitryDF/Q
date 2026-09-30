@@ -121,7 +121,7 @@ export -f safe_rmtree
 # ─────────────────────────────────────────────────────────────────────────
 # fake-tool generators
 # ─────────────────────────────────────────────────────────────────────────
-write_fake_config-source() {  # $1 = path to write
+write_fake_config_source() {  # $1 = path to write
   {
     printf '#!/usr/bin/env bash\n'
     printf 'case "${1:-}" in\n'
@@ -131,7 +131,7 @@ write_fake_config-source() {  # $1 = path to write
   } > "$1"
   chmod +x "$1"
 }
-export -f write_fake_config-source
+export -f write_fake_config_source
 
 write_fake_gh() {  # $1 = path to write
   {
@@ -206,7 +206,7 @@ new_scratch_env() {
   chmod +x "$root/cfg/bin/claude-promote"
 
   mkdir -p "$root/fakebin"
-  write_fake_config-source "$root/fakebin/config-source"
+  write_fake_config_source "$root/fakebin/config-source"
   write_fake_gh "$root/fakebin/gh"
   write_fake_verify "$root/cfg/bin/claude-verify" green   # scenarios override to red as needed
 }

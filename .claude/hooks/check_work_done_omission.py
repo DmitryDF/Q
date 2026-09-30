@@ -218,7 +218,7 @@ def _lock_started_at(topic: str, project: str) -> str | None:
     return payload.get("started_at") or None
 
 
-def _config_source_path() -> str | None:
+def _config_source_source_path() -> str | None:
     """The config source repo root (harness commits land here on `main`; the
     frozen ~/.claude/.git is NOT where they land — git-policy.md §2). None on error.
     """
@@ -255,7 +255,7 @@ def _commits_present(topic, project, state, started_at, ended_at) -> bool:
         plan_path = rel if rel.is_absolute() else _resolve_main(str(rel), project_root)
 
     project_repo = _main_checkout(project_root)          # Projects `main`
-    harness_source = _config_source_path()              # config source `main`
+    harness_source = _config_source_source_path()              # config source `main`
     harness_repo = _main_checkout(harness_source) if harness_source else None
 
     if plan_path is None or project_repo is None or harness_repo is None:

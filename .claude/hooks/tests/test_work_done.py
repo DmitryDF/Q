@@ -1184,7 +1184,7 @@ class HarnessRepoForAttributionTests(unittest.TestCase):
     """A2 (project-tracking-staleness S8 / M3-secondary): resolve the harness
     repo to the config-source main checkout, not the frozen ~/.claude."""
 
-    def test_resolves_config-source_source_main_checkout(self):
+    def test_resolves_config_source_source_main_checkout(self):
         import bookkeeping_resolver as br
         ok = subprocess.CompletedProcess(args=[], returncode=0,
                                          stdout="/fake/config-source/source\n", stderr="")
@@ -1192,7 +1192,7 @@ class HarnessRepoForAttributionTests(unittest.TestCase):
              mock.patch.object(br, "main_checkout", return_value="/fake/config-source/main"):
             self.assertEqual(wd.harness_repo_for_attribution(), "/fake/config-source/main")
 
-    def test_none_on_config-source_failure(self):
+    def test_none_on_config_source_failure(self):
         bad = subprocess.CompletedProcess(args=[], returncode=1, stdout="", stderr="e")
         with mock.patch("subprocess.run", return_value=bad):
             self.assertIsNone(wd.harness_repo_for_attribution())

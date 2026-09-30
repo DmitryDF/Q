@@ -247,7 +247,7 @@ check "2b none of B's research files were committed OR staged" $?
 # --------------------------------------------------------------------------- #
 # config-source-shaped sandbox for claude-promote (same shim approach as S3's suite).
 # --------------------------------------------------------------------------- #
-mk_config-source() {  # $1 name -> sets DEST SRC SHIM
+mk_config_source() {  # $1 name -> sets DEST SRC SHIM
   local B="$T/$1"
   DEST="$B/dest"; SRC="$B/src"; SHIM="$B/bin"
   mkdir -p "$DEST/.claude/rules" "$DEST/.claude/hooks" "$SRC" "$SHIM"
@@ -286,7 +286,7 @@ src_armed() {  # bare commit in the harness source must be refused (it is otherw
 }
 
 echo "=== 3. 200a247 — claude-promote carried a concurrent rules/prompt-engineering.md ==="
-mk_config-source promote-200a247
+mk_config_source promote-200a247
 printf 'A registry v0\n' > "$DEST/.claude/hooks/os_registry.py"
 printf 'PE v0\n'         > "$DEST/.claude/rules/prompt-engineering.md"
 seed_source "$DEST/.claude/hooks/os_registry.py" "$DEST/.claude/rules/prompt-engineering.md"
@@ -327,7 +327,7 @@ check "3b B's LIVE edit is byte-identical after A's promotion" $?
 check "3b a declared promotion carries no waiver trailer" $?
 
 echo "=== 4. 4e57836 — claude-promote carried six output-security files ==="
-mk_config-source promote-4e57836
+mk_config_source promote-4e57836
 printf 'picker v0\n' > "$DEST/.claude/hooks/source_picker.py"
 for i in 1 2 3 4 5 6; do printf 'os v0\n' > "$DEST/.claude/hooks/os_file_$i.py"; done
 seed_source "$DEST/.claude/hooks/source_picker.py" "$DEST"/.claude/hooks/os_file_*.py

@@ -904,7 +904,7 @@ def _cli_resolve_fire_mode(argv: list[str]) -> int:
 # A2 (project-tracking-staleness S8 / M3-secondary) — harness repo for
 # attribution. `/work-done` must scan the config-source SOURCE main checkout (where
 # landed harness commits live), not the frozen ~/.claude. Single-locus resolver
-# mirroring check_work_done_omission.py's _config_source_path + _main_checkout.
+# mirroring check_work_done_omission.py's _config_source_source_path + _main_checkout.
 # ---------------------------------------------------------------------------
 
 def harness_repo_for_attribution() -> Optional[str]:

@@ -117,8 +117,8 @@ def _root(files: dict) -> tempfile.TemporaryDirectory:
 
 
 def test_capture_unbound_only_beside_an_unscoped_commit():
-    bad = "#!/usr/bin/env bash\nthe capture step\ngit -C \"$S\" add -A\ngit -C \"$S\" commit -m \"$M\"\n"
-    good = "#!/usr/bin/env bash\nthe capture step\ngit -C \"$S\" add -A -- a\ngit -C \"$S\" commit -m \"$M\" -- a\n"
+    bad = "#!/usr/bin/env bash\nconfig_source re-add\ngit -C \"$S\" add -A\ngit -C \"$S\" commit -m \"$M\"\n"
+    good = "#!/usr/bin/env bash\nconfig_source re-add\ngit -C \"$S\" add -A -- a\ngit -C \"$S\" commit -m \"$M\" -- a\n"
     with _root({"bin/p": bad}) as d:
         rules = sorted(f["rule"] for f in pss.scan(Path(d))["findings"])
         assert rules == ["capture-unbound", "unscoped-commit", "whole-tree-add"], rules

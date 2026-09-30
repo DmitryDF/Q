@@ -62,7 +62,7 @@ ENV_ALLOWLIST = ("PATH", "HOME", "TMPDIR", "USER", "LOGNAME", "LANG", "LC_ALL",
 # block-removed run to come back GREEN, and land-port fired independently of the
 # reachability block — so that arm could never have caught a deleted block.
 #
-# `test_render_candidate_is_faithful_to_config-source` pins this to the managed set,
+# `test_render_candidate_is_faithful_to_config_source` pins this to the managed set,
 # so the next surface added to the harness fails HERE instead of drifting.
 RENDER_DIRS = ("bin", "hooks", "skills", "rules", "agents", "docs")
 
@@ -147,7 +147,7 @@ def render_candidate(dest: Path) -> Path:
 
     Faithful to the MANAGED set, not to a convenient subset of it: see
     `RENDER_DIRS` for what an unfaithful render cost, and
-    `test_render_candidate_is_faithful_to_config-source` for what holds it there.
+    `test_render_candidate_is_faithful_to_config_source` for what holds it there.
     """
     dest.mkdir(parents=True, exist_ok=True)
     for name in RENDER_FILES:
@@ -253,7 +253,7 @@ def test_gate_env_allowlist_still_matches_land_port():
     assert "CLAUDE_CONFIG_DIR" not in land_port.DEFAULT_ENV_ALLOWLIST
 
 
-def test_render_candidate_is_faithful_to_config-source(tmp_path):
+def test_render_candidate_is_faithful_to_config_source(tmp_path):
     """Every config-source-managed file must survive into the rendered candidate.
 
     This is the same mirror-and-pin discipline as the arm above, applied to the
