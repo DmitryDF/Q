@@ -1,0 +1,73 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="1090" viewBox="0 0 1080 1090" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" role="img" aria-label="Q&#39;s flow: a question or an idea goes in; /clarification writes a crisp thought, /solution-design a design, /plan a plan, /execute-plan the code. /research is called when something is unfamiliar, and what execution learns feeds back into /clarification.">
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 1 1 L 11 6 L 1 11 z" fill="#111"/>
+    </marker>
+    <marker id="arrowGray" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 1 1 L 11 6 L 1 11 z" fill="#8A8A8F"/>
+    </marker>
+  </defs>
+  <rect width="1080" height="1090" fill="#FFFFFF"/>
+  <g transform="translate(0,-152)">
+
+  <!-- IDEA chip -->
+  <rect x="465" y="228" width="150" height="46" rx="10" fill="#EDEDF0"/>
+  <text x="540" y="259" text-anchor="middle" font-size="22" font-weight="700" letter-spacing="0.4" fill="#5A5A60">An Idea</text>
+  <line x1="540" y1="278" x2="540" y2="322" stroke="#8A8A8F" stroke-width="3" marker-end="url(#arrowGray)"/>
+
+  <!-- /research: called BY /clarification, and usable on its own -->
+  <rect x="53" y="228" width="180" height="46" rx="10" fill="#EDEDF0"/>
+  <text x="143" y="258" text-anchor="middle" font-size="22" font-weight="700" letter-spacing="0.4" fill="#5A5A60">A Question</text>
+  <line x1="143" y1="278" x2="143" y2="330" stroke="#8A8A8F" stroke-width="3" marker-end="url(#arrowGray)"/>
+
+  <rect x="56" y="336" width="174" height="68" rx="14" fill="#FFFFFF" stroke="#111" stroke-width="4"/>
+  <text x="143" y="379" text-anchor="middle" font-size="25" font-weight="700" fill="#111">/research</text>
+  <text x="143" y="430" text-anchor="middle" font-size="17" fill="#6B6B70">when you want to understand</text>
+  <text x="143" y="452" text-anchor="middle" font-size="17" fill="#6B6B70">something unfamiliar</text>
+
+  <line x1="238" y1="370" x2="302" y2="370" stroke="#111" stroke-width="3"
+        stroke-dasharray="9 7" marker-start="url(#arrow)" marker-end="url(#arrow)"/>
+
+  <!-- chain -->
+  <rect x="310" y="326" width="460" height="88" rx="16" fill="#FFFFFF" stroke="#111" stroke-width="4"/>
+  <text x="540" y="381" text-anchor="middle" font-size="33" font-weight="700" fill="#111">/clarification</text>
+
+  <line x1="540" y1="414" x2="540" y2="492" stroke="#111" stroke-width="3" marker-end="url(#arrow)"/>
+  <rect x="451" y="436" width="178" height="36" rx="7" fill="#EDEDF0"/>
+  <text x="540" y="461" text-anchor="middle" font-size="20" font-weight="700" letter-spacing="0.3" fill="#5A5A60">Crisp Thought</text>
+
+  <rect x="310" y="496" width="460" height="88" rx="16" fill="#FFFFFF" stroke="#111" stroke-width="4"/>
+  <text x="540" y="551" text-anchor="middle" font-size="33" font-weight="700" fill="#111">/solution-design</text>
+
+  <line x1="540" y1="584" x2="540" y2="662" stroke="#111" stroke-width="3" marker-end="url(#arrow)"/>
+  <rect x="478" y="606" width="124" height="36" rx="7" fill="#EDEDF0"/>
+  <text x="540" y="631" text-anchor="middle" font-size="20" font-weight="700" letter-spacing="0.3" fill="#5A5A60">Design</text>
+
+  <rect x="310" y="666" width="460" height="88" rx="16" fill="#FFFFFF" stroke="#111" stroke-width="4"/>
+  <text x="540" y="721" text-anchor="middle" font-size="33" font-weight="700" fill="#111">/plan</text>
+
+  <line x1="540" y1="754" x2="540" y2="832" stroke="#111" stroke-width="3" marker-end="url(#arrow)"/>
+  <rect x="492" y="776" width="96" height="36" rx="7" fill="#EDEDF0"/>
+  <text x="540" y="801" text-anchor="middle" font-size="20" font-weight="700" letter-spacing="0.3" fill="#5A5A60">Plan</text>
+
+  <rect x="310" y="836" width="460" height="88" rx="16" fill="#FFFFFF" stroke="#111" stroke-width="4"/>
+  <text x="540" y="891" text-anchor="middle" font-size="33" font-weight="700" fill="#111">/execute-plan</text>
+
+  <line x1="540" y1="924" x2="540" y2="972" stroke="#8A8A8F" stroke-width="3" marker-end="url(#arrowGray)"/>
+  <rect x="465" y="976" width="150" height="46" rx="10" fill="#EDEDF0"/>
+  <text x="540" y="1007" text-anchor="middle" font-size="22" font-weight="700" letter-spacing="0.4" fill="#5A5A60">Code</text>
+
+  <!-- the loop: what execution learns goes back into the framing -->
+  <path d="M 770 880 H 892 Q 916 880 916 856 V 394 Q 916 370 892 370 H 782"
+        fill="none" stroke="#111" stroke-width="3" stroke-dasharray="10 8" marker-end="url(#arrow)"/>
+  <rect x="898" y="512" width="36" height="200" fill="#FFFFFF"/>
+  <text x="916" y="612" text-anchor="middle" font-size="20" fill="#111"
+        transform="rotate(-90 916 612)">what execution learns</text>
+
+  <!-- caption -->
+  <text x="540" y="1140" text-anchor="middle" font-size="26" fill="#3A3A3F">Every step from idea to code is written down —</text>
+  <text x="540" y="1178" text-anchor="middle" font-size="26" fill="#3A3A3F">and checked before the next one starts.</text>
+
+  </g>
+</svg>

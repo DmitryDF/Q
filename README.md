@@ -1,5 +1,7 @@
 # Q — a spec-driven development system: clarification → research → solution-design → plan → execution. Loop.
 
+![Q's flow: a question or an idea goes in; /clarification writes a crisp thought, /solution-design a design, /plan a plan, /execute-plan the code](docs/q-flow.svg)
+
 Q is a **spec-driven development system**. It turns a raw idea into a written spec —
 a locked Discovery contract, then a design, then a plan — and then implements that
 spec. Vibe coding is where it pays off: the agent still writes the code fast, but it
