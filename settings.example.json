@@ -282,6 +282,15 @@
             "command": "${KIT_HOOKS_DIR}/pre-delete-claude-rule.sh"
           }
         ]
+      },
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${KIT_HOOKS_DIR}/check-output-security.sh"
+          }
+        ]
       }
     ],
     "Stop": [
@@ -309,6 +318,10 @@
           },
           {
             "type": "command",
+            "command": "${KIT_HOOKS_DIR}/check-output-security-stop.sh"
+          },
+          {
+            "type": "command",
             "command": "${KIT_HOOKS_DIR}/check-research-pipeline-gate.sh"
           },
           {
@@ -326,6 +339,10 @@
           {
             "type": "command",
             "command": "${KIT_HOOKS_DIR}/check-work-done-omission.sh"
+          },
+          {
+            "type": "command",
+            "command": "${KIT_HOOKS_DIR}/check-framing-audit-stop.sh"
           }
         ]
       }
@@ -464,6 +481,10 @@
       {
         "matcher": "Write|Edit",
         "hooks": [
+          {
+            "type": "command",
+            "command": "${KIT_HOOKS_DIR}/check-output-security-clear.sh"
+          },
           {
             "type": "command",
             "command": "${KIT_HOOKS_DIR}/harvest-on-verify.sh"
