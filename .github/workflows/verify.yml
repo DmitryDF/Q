@@ -221,7 +221,11 @@ jobs:
         run: |
           # /prioritize is withheld by owner decision; the strip is a build transform,
           # so a register edit or a transform bug could ship it again silently.
-          if grep -rnE --exclude-dir=.git \
+          # --exclude=verify.yml: THIS FILE CARRIES THE PATTERNS IT GREPS FOR. Fifth
+          # instance of that class in this release — the leak gate hit it on its first
+          # real run, verify_kit.py hit it, the CI leak grep hit it twice. Without the
+          # exclusion the gate reports itself and can never pass.
+          if grep -rnE --exclude-dir=.git --exclude=verify.yml \
                'PRIORITIZE_STATE_DIR|prioritize_advance|prioritize-start|PRIORITIZE_CADENCE_DAYS' . ; then
             echo "::error::the withheld /prioritize subsystem is present"; exit 1
           fi
