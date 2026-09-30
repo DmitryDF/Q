@@ -110,6 +110,15 @@
         ]
       },
       {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${KIT_HOOKS_DIR}/check-work-start-wikilink.sh"
+          }
+        ]
+      },
+      {
         "matcher": "EnterPlanMode",
         "hooks": [
           {
@@ -313,6 +322,10 @@
           {
             "type": "command",
             "command": "${KIT_HOOKS_DIR}/execplan-stop-handoff.sh"
+          },
+          {
+            "type": "command",
+            "command": "${KIT_HOOKS_DIR}/check-work-done-omission.sh"
           }
         ]
       }

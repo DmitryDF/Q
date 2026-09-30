@@ -100,6 +100,7 @@ hard-fails if it names a different one.
 - Handoff composition, land-readiness and cross-session resume.
 - Gate 0-3 enforcement on plan mode.
 - The plan-execution engine (module ships before its skill — see A6).
+- Work-lifecycle state and the wikilink guard.
 
 ---
 
