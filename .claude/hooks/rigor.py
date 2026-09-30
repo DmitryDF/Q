@@ -106,6 +106,26 @@ SITE_CLASSES: dict[str, str] = {
     "fixed": "a canon-locked pipeline — NOT on the dial at any tier",
 }
 
+# OFF THE DIAL ENTIRELY — not the `fixed` class, which is a different number.
+#
+# Plan-mode verification blocks ExitPlanMode, so its allocation is pinned by the
+# canon rather than by the operator's cost setting: 1 Sonnet + 1 Opus per
+# transition, 3 Sonnet + 1 Opus for the final coherency check
+# (`factcheck-convergence.md`, plan-kind note). `fixed` returns 3 Sonnet, which is
+# neither of those — so a plan gate must not be routed through this module at all.
+#
+# This note is the record of that decision, because the conformance scan CANNOT
+# find it: plan states its counts in prose ("1 Sonnet + 1 Opus"), and `_LITERAL`
+# matches only the flag forms `--sonnet N` / `--opus N` / `/double-check M,N,R`.
+# Widening the pattern to prose was considered and rejected — "1 Opus + 2 Sonnet"
+# in `/solution-design` describes CANDIDATE dispatches, not checkers, so the
+# widened scan would flag a line that is already correct.
+OFF_DIAL: dict[str, str] = {
+    "skills/plan/SKILL.md":
+        "plan-mode gates block ExitPlanMode; their allocation is canon-pinned "
+        "(1+1 per transition, 3+1 for coherency) and deliberately not dial-able",
+}
+
 # The canon allocation the fixed pipelines keep, quoted from
 # factcheck-convergence.md §1 / code_first_architecture.md: three independent
 # Sonnet checkers that must agree.

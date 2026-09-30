@@ -305,3 +305,44 @@ def test_set_warns_when_an_export_would_shadow_the_file(tmp_path):
 def test_selftest_and_conformance_exit_zero_on_the_shipped_tree():
     assert _cli("selftest").returncode == 0
     assert _cli("conformance", str(HOOKS.parent)).returncode == 0
+
+def test_plan_gates_are_off_the_dial_and_are_not_the_fixed_class():
+    """Operator decision, 2026-09-30: plan-mode gates stay locked, and `fixed` is not it.
+
+    Three shipped surfaces disagreed before this. `/double-check` listed plan gates as an
+    example of the `fixed` class; `factcheck-convergence.md` and `skills/plan/SKILL.md`
+    both state a different allocation for the plan kind. Since `fixed` returns 3 Sonnet
+    and plan's canon is 1 Sonnet + 1 Opus (3 + 1 for coherency), a caller following that
+    row would have dispatched a number the canon does not specify.
+
+    Two assertions, because one alone goes vacuous in opposite directions: the row must
+    not name plan gates, and `fixed` must keep returning something plan's canon does NOT
+    say — if the two ever coincide, the reason for the separation is gone and this test
+    should be revisited rather than silently passing.
+    """
+    root = Path(__file__).resolve().parent.parent.parent
+    dc = root / "skills" / "double-check" / "SKILL.md"
+    if not dc.is_file():
+        pytest.skip("no double-check skill in this tree")
+    text = dc.read_text(encoding="utf-8")
+
+    for line in text.splitlines():
+        if line.startswith("| `fixed`"):
+            assert "plan gate" not in line.lower(), (
+                "the `fixed` row names plan gates again; `fixed` returns "
+                f"{rg.FIXED_CANON_FLAGS!r}, which is not plan's canon allocation"
+            )
+            break
+    else:
+        pytest.fail("no `fixed` row found in the /double-check class table")
+
+    # the separation must still be real
+    assert rg.rigor_for("fixed").flags == "--sonnet 3"
+    assert "opus" not in rg.rigor_for("fixed").flags, (
+        "`fixed` now includes Opus — if it has converged on plan's 3+1 canon, the "
+        "reason plan gates are held separate no longer holds and the decision needs "
+        "revisiting rather than this test quietly passing"
+    )
+
+    # and the decision has a recorded home
+    assert "skills/plan/SKILL.md" in rg.OFF_DIAL

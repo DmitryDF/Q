@@ -54,7 +54,7 @@ python3 ${KIT_HOOKS_DIR}/rigor.py for gate
 |---|---|
 | `gate` | the verdict BLOCKS — the work does not proceed on a DISCREPANCY |
 | `check` | routine verification — a discrepancy causes a revision, not a stop |
-| `fixed` | a canon-locked pipeline (plan gates, research FC, KL extraction) — returns the canon 3 Sonnet at every tier, so asking the dial here is safe |
+| `fixed` | a canon-locked pipeline (research FC, KL extraction) — returns the canon 3 Sonnet at every tier, so asking the dial here is safe |
 
 Resolution happens **at dispatch, never at install**: the operator can change the
 tier at any time (`rigor.py set thorough`) and the next run follows it, with no
@@ -67,6 +67,15 @@ producer-never-verifies is not a setting), and it never touches the fixed
 pipelines (`factcheck-convergence.md` §1). At `light` and `minimal` there is one
 binding checker, so the result is one isolated opinion rather than a vote — say so
 when reporting a verdict at those tiers rather than implying a consensus.
+
+**Plan-mode gates are not on the dial, and are not the `fixed` class either.**
+They block `ExitPlanMode`, so they stay at the allocation `factcheck-convergence.md`
+states for the plan kind — 1 Sonnet + 1 Opus per transition, 3 Sonnet + 1 Opus for
+the final coherency check — at every tier. That is a different number from what
+`fixed` returns, which is why they are not listed as an example of it: passing
+`--class fixed` for a plan gate would dispatch 3 Sonnet, an allocation the canon
+does not specify. Deliberate, not an oversight: a gate that stops the work should
+not soften because the operator asked for speed elsewhere.
 
 An operator naming `--sonnet`/`--opus` explicitly always wins over the dial; the
 dial governs what the skills do on their own.
