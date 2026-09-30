@@ -164,17 +164,19 @@ jobs:
           print(f"{scripts} hook script(s) ship; {total} registration(s)")
           if total == 0:
               sys.exit("::error::settings.example.json registers ZERO hooks — every gate would be inert")
+          # BASENAME of the first token that looks like a hook path. Splitting on the
+          # literal "hooks/" matched nothing — shipped commands read
+          # `${KIT_HOOKS_DIR}/check-x.sh` — so the check skipped every registration.
+          import re
           missing = []
           for v in reg.values():
               if not isinstance(v, list):
                   continue
               for e in v:
                   for h in e.get("hooks", []):
-                      c = h.get("command", "")
-                      if "hooks/" in c:
-                          n = c.split("hooks/")[-1].split()[0].strip('"\'')
-                          if not os.path.isfile(os.path.join(hooks_dir, n)):
-                              missing.append(n)
+                      m = re.search(r"([\w.\-]+\.(?:sh|py))\b", h.get("command", ""))
+                      if m and not os.path.isfile(os.path.join(hooks_dir, m.group(1))):
+                          missing.append(m.group(1))
           if missing:
               sys.exit(f"::error::registrations point at hooks that do not ship: {sorted(set(missing))[:5]}")
           print("OK — registrations present, every target ships")
