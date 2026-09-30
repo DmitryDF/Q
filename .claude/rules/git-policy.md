@@ -7,7 +7,7 @@ references this file).
 **Authored:** 2026-07-09. **Status:** active.
 **Key change vs. the 2026-06-23 CLAUDE.md policy:** the two repos no longer share
 one model. The **Projects** repo uses GitHub flow; the **`~/.claude` harness** repo
-is config-source-managed and promoted via `claude-promote` — direct commits to
+is config-source-managed and promoted via `config-promote` — direct commits to
 `~/.claude/.git` are frozen (`claude-infra-overhaul` S2, 2026-07).
 
 ---
@@ -32,7 +32,7 @@ authoritative — `code_first_architecture.md` trust hierarchy):
 | Cross-session continuity (resume to existing worktree; handoff worker) | §3 | `handoff-worker.sh`/`handoff_resume.py`, `land_readiness.py` |
 | Shared bookkeeping owned by `main` + canonical resolver + **STABILIZED LOCK PRINCIPLE** | `bookkeeping-model.md` §4a (manifest) + §4b (ownership/resolver/lock) | `bookkeeping_resolver.py`, `bookkeeping_lock.py`, `bookkeeping-paths.json` |
 | Verify-then-land gate + one land **port** / two adapters | §11 | `verify-then-land.sh`, `land_port.py` |
-| Automated promotion worker (staging→prod) — **designed, NOT wired; refuses. Use `claude-promote`** | §2 + §11 | `promote-worker.sh`, `land_port.py` (`PromotionAdapter`), `hooks/land-port-revival-checklist.md` |
+| Automated promotion worker (staging→prod) — **designed, NOT wired; refuses. Use `config-promote`** | §2 + §11 | `promote-worker.sh`, `land_port.py` (`PromotionAdapter`), `hooks/land-port-revival-checklist.md` |
 
 The **shared-file coherence half** (main-ownership, the canonical `main`-pinned resolver, the
 STABILIZED LOCK PRINCIPLE) lives in `bookkeeping-model.md` §4b (its existing shared-path domain,
@@ -67,39 +67,39 @@ remote). Live `~/.claude/` is the *deployed* copy, reached only via the deploy s
 - **Experiment first for executable modules (never edit live config for
   experimentation).** A broken edit to a config-source-managed prod module that live skills
   load on demand (`hooks/*`, `*.py`) breaks those skills for *all* sessions. Develop
-  + test such edits in a `claude-experiment spawn <label>` clone first — a CoW copy of
+  + test such edits in a `config-experiment spawn <label>` clone first — a CoW copy of
   the **managed scope only** (`agents bin CLAUDE.md hooks rules settings.json skills`)
   at `~/.claude-staging-<label>/`, CLAUDE_CONFIG_DIR-redirected; unmanaged dirs
   (`projects/`, `cache/`, `history.jsonl`, `statsig/`, `sessions/`…) never enter it.
-  `claude-experiment {promote,discard,list,refresh}` manage the clone; `promote`/
+  `config-experiment {promote,discard,list,refresh}` manage the clone; `promote`/
   `discard` are **non-mutating on live**. (A pure docs/rules-markdown add carries no
   runtime-execution risk, so it may be authored live — but it still ships via
-  `claude-promote` below.)
-- **Promote, don't commit.** `claude-promote` = the capture step (capture live edits)
+  `config-promote` below.)
+- **Promote, don't commit.** `config-promote` = the capture step (capture live edits)
   → short-lived-branch **PR** → merge (**merge, not rebase**) → the deploy step →
-  **`green-<yyyymmdd-HHMM>` recovery tag** → `claude-verify` bookends. Never hand-commit
+  **`green-<yyyymmdd-HHMM>` recovery tag** → `config-verify` bookends. Never hand-commit
   the frozen `~/.claude/.git`.
-- **`/close` step 4** routes harness changes through `claude-promote` automatically.
+- **`/close` step 4** routes harness changes through `config-promote` automatically.
 - **PR-review mode is per-repo** (`.pr-mode` at the config source root): `quick`
   (solo self-merge, the default) vs. `extra-safety` (blocks self-approval via script
   refusal + GitHub native rejection).
-- **Drift-clean gate:** `claude-divergence-check` enforces the staging-≥-prod
+- **Drift-clean gate:** `config-divergence-check` enforces the staging-≥-prod
   invariant (the drift check destination column; exit 1 on an un-captured direct
   prod edit, naming the drifted path + stage-forward remediation).
-  `claude-verify --phase pre` = structural only (valid `settings.json` +
+  `config-verify --phase pre` = structural only (valid `settings.json` +
   executable `hooks/*.sh`; deliberately skips the deploy verification so it never
   false-positives mid-promotion); `--phase post`/standalone adds the deploy verification
   (live == managed state).
-- **The land primitive backs promotion.** `claude-promote` is the harness **adapter** of the one
+- **The land primitive backs promotion.** `config-promote` is the harness **adapter** of the one
   land primitive (`dry-run/diff → apply → promote`). The automated promotion worker and the
   verify-then-land gate that share that primitive — plus the per-adapter rollback — are codified
   together in §11.
-- **`claude-promote`'s deploy-time gate is the Tier-2 verify-then-land gate for harness *code*
+- **`config-promote`'s deploy-time gate is the Tier-2 verify-then-land gate for harness *code*
   deploys** (client-side; `harness-land-model-adoption-miss` S3/S5). Before the promotion branch
-  reaches origin, `claude-promote` classifies the just-committed change (via
+  reaches origin, `config-promote` classifies the just-committed change (via
   `harness_code_paths.py`): docs/rules-only promotions skip the gate (no false friction); a
   promotion carrying any harness **code** must render the candidate and pass the canonical check
-  (`claude-verify --phase pre`) against the *rendered* tree, then publish the branch **plus** a
+  (`config-verify --phase pre`) against the *rendered* tree, then publish the branch **plus** a
   `refs/notes/verify-then-land` receipt note **atomically** — or nothing lands. Being client-side,
   §8's caveat still applies: **real enforcement is server-side/CI** — the S4 CI mirror is the server
   (Tier-3) tier that reads the receipt note and rejects a receipt-less PR; this client gate is the
@@ -137,7 +137,7 @@ shared out-of-iCloud object store `~/repos/`; see
   commit (bookkeeping + domain) falls through to block-with-override with a guided message. The
   allow-set is read from the single machine-readable `bookkeeping-paths.json` manifest — never
   regex-scraped from prose (see `bookkeeping-model.md` §4a). This replaced the S1→S2 interim
-  `ALLOW_OUT_OF_TREE=1` bridge `claude-promote` used on its own config-source-`main` commit.
+  `ALLOW_OUT_OF_TREE=1` bridge `config-promote` used on its own config-source-`main` commit.
   **Scope stage (glittery-humming-pine S2 → enforcing since S6).** BEFORE any of the
   placement/ownership exits above — including inside linked worktrees, whose index is
   shared per worktree, not per session — the gate asks whether the commit NAMED its paths
@@ -212,9 +212,9 @@ shared out-of-iCloud object store `~/repos/`; see
   declaration publishes nothing — it is never a reason to fall back to a bare commit.
   (glittery-humming-pine; four cross-attributed commits in eight days, 2026-08.)
   - *Enforced by two independent layers, plus a runtime backstop.* The two layers: the
-    converted publish surfaces (`/close`, `/ninja-fix`, `claude-promote`, execute-plan,
+    converted publish surfaces (`/close`, `/ninja-fix`, `config-promote`, execute-plan,
     starter-kit) publish scoped whether or not any hook runs; and
-    `hooks/check-publish-scope.sh`, run by `claude-verify --phase pre`, refuses to ship a
+    `hooks/check-publish-scope.sh`, run by `config-verify --phase pre`, refuses to ship a
     surface that would commit unscoped. The pre-commit gate (§3) REFUSES an undeclared
     commit at run time, but it is a backstop rather than a third independent layer: it
     shares its discriminator with its own refusal message, and a client-side hook is not
@@ -245,8 +245,8 @@ shared out-of-iCloud object store `~/repos/`; see
 - **Checkpoint tag before risky changes** (`<topic>-vN` = a stable return point)
   and **before touching `main`** (`pre-main-reconcile-<date>`).
   (diary 2026-06-23 Session 2)
-- **Harness recovery baseline:** the `green-<ts>` tags `claude-promote` lays are the
-  known-good return points; `claude-rescue` is the standalone out-of-namespace
+- **Harness recovery baseline:** the `green-<ts>` tags `config-promote` lays are the
+  known-good return points; `config-rescue` is the standalone out-of-namespace
   recovery path.
 
 ## 6. One-time reconciliation onto `main`
@@ -307,7 +307,7 @@ four-step growth sequence (`code_first_architecture.md` §"Growth sequence insid
 port") and stopped there: `promote-worker.sh` wires none of the seams
 `PromotionAdapter` requires, so since land-port-tested-configuration S2 the adapter
 **refuses by name before anything is written**. The harness's wired staging→prod path is
-`claude-promote` (§2). What survives behind that refusal is catalogued in
+`config-promote` (§2). What survives behind that refusal is catalogued in
 `hooks/land-port-revival-checklist.md`.
 
 An earlier revision of this section said "Shipped: `git-working-model` S3 gate + S4
@@ -347,7 +347,7 @@ result, and it is not the same thing as a path an operator can run.
   bullet describes what the worker was built to do; **none of it is reachable today**.
   Invoking `promote-worker.sh` produces a named refusal (`[unwired-seams]`, exit 3) with
   nothing written to the shared source, because the wrapper supplies neither of the two
-  seams `PromotionAdapter` requires. **Use `claude-promote` (§2).** Do not cite this bullet,
+  seams `PromotionAdapter` requires. **Use `config-promote` (§2).** Do not cite this bullet,
   or the promotion suite's green count, as evidence that a staging→prod worker ships —
   that suite fakes every production seam, which is the `real-to-test` step of the growth
   sequence, not the last one. Design intent, for the record and for
@@ -362,7 +362,7 @@ result, and it is not the same thing as a path an operator can run.
   separate deployment mutex around the live apply; neither spans the network or the human go/no-go;
   pre-approval `re-add`+diff run in an ephemeral workspace, the shared source is committed only after
   "go", and the deploy is path-scoped to the session's files). Code: `promote-worker.sh` →
-  `land_port.py` (`PromotionAdapter`); the harness endpoint is `claude-promote` (§2).
+  `land_port.py` (`PromotionAdapter`); the harness endpoint is `config-promote` (§2).
 - **Rollback (per adapter; never `reset --hard` on shared history).** Projects = `git revert -m 1
   <merge-SHA>`. Harness = a **synchronized source-and-target** rollback: `git revert` the bad
   promotion commit in the config-source **source** tree, then the deploy step the reverted source to live
@@ -383,7 +383,7 @@ result, and it is not the same thing as a path an operator can run.
 ## Provenance
 
 - `Thoughts/claude-infra-overhaul_THOUGHT.md` — config-source promotion model
-  (`claude-promote` S2, `claude-experiment` S4, both shipped/complete; `green-*`
+  (`config-promote` S2, `config-experiment` S4, both shipped/complete; `green-*`
   tags; frozen `~/.claude/.git`; source at `<config-source-repo>/`) and the S5
   worktree + push-safety primitive (§3).
 - `Thoughts/claude-infra-overhaul_Q16_RESEARCH.md` — version-control-as-Tier-1 +

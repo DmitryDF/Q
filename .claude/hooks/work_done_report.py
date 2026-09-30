@@ -47,7 +47,7 @@ where `work_done_journal.STATE_DIR` also writes. It is NOT true that all three
 always resolve to the same directory: those two hardcode `Path.home()/".claude"`,
 while this module resolves its base from `CLAUDE_CONFIG_DIR` first. They coincide
 under default configuration and **diverge under a `CLAUDE_CONFIG_DIR` redirect** —
-which is this codebase's own documented `claude-experiment` staging pattern
+which is this codebase's own documented `config-experiment` staging pattern
 (`git-policy.md` §2).
 
 That divergence is deliberate here rather than an oversight. Honouring

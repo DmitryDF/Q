@@ -268,7 +268,7 @@ class TestCanonicalLocation(unittest.TestCase):
         """plans/ and logs/ must not be offered for promotion.
 
         Observed directly while building this: an unrestricted projection offered
-        `plans/<topic>.run-state.json`, which claude-promote's step 2a would then
+        `plans/<topic>.run-state.json`, which config-promote's step 2a would then
         `config-source add` — promoting session state into the shared config.
 
         Driven through the script with a real ledger rather than grepped, so a

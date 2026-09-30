@@ -246,9 +246,9 @@ than testing it. **Six properties are load-bearing:**
    byte-identical across the slice.
 
 **A process incident is recorded here rather than only in a diary, because it recurred.** While
-S-final was mid-slice, a concurrent session's **bare `claude-promote`** swept ~360 lines of its
+S-final was mid-slice, a concurrent session's **bare `config-promote`** swept ~360 lines of its
 in-progress work into commit `4e57836`, whose message names an unrelated topic
-(`research-source-adapters` S4). At the time, `claude-promote` was unscoped at two sites —
+(`research-source-adapters` S4). At the time, `config-promote` was unscoped at two sites —
 the capture step and `git add -A` — so a bare run captured whatever else was dirty in the tree.
 This is the **second** demonstrated instance: the first put `settings.json` into the shared
 config on 2026-08-20.
@@ -256,7 +256,7 @@ config on 2026-08-20.
 *(Corrected 2026-09-18 — the paragraph above stood in the present tense and no longer described
 the code, which matters because this is a rules file read every session. `glittery-humming-pine`
 A4 shipped `--paths`/`--session-scope`: a bare run now FAILS CLOSED, publishing nothing and
-naming the dirty paths it leaves (`claude-promote:319-351`), and a declared run scopes BOTH git
+naming the dirty paths it leaves (`config-promote:319-351`), and a declared run scopes BOTH git
 verbs (`:450-456`). The `git add -A` half of the diagnosis is therefore closed. The `config-source
 re-add` half remains unscoped **deliberately**, with the reasoning at the site (`:229-249`):
 scoping the capture would leave a concurrent session's live edits uncaptured in the source, and
@@ -264,7 +264,7 @@ the later apply would then overwrite their work — so mis-attribution is preven
 not at the capture. The incidents above are unchanged as history; only the present-tense claim
 about current behaviour was wrong.)* Nothing functional was harmed; what was damaged is attribution and reviewability,
 and the shared history was deliberately **not** rewritten (`git-policy.md` §4/§5 — revert, never
-reset). Also observed: `claude-divergence-check` reported 3 of the 9 edited files, which is the
+reset). Also observed: `config-divergence-check` reported 3 of the 9 edited files, which is the
 already-filed new-file blind spot with a second data point behind it.
 
 **What still does not exist**, and is assigned to no slice: a write→read join. **S-final verified

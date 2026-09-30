@@ -1104,7 +1104,7 @@ uninstall_one_hook() {  # $1 hooks_dir $2 hookname $3 target
         # rollback, not a success: the plan's two-line rollback recipe would
         # otherwise report clean while having removed nothing — e.g. if the
         # wrapper's baked TARGET came from a different config dir (a
-        # `claude-experiment` staging clone). The `absent` branch below still
+        # `config-experiment` staging clone). The `absent` branch below still
         # returns 0, because nothing to do genuinely is success.
         return 1
       fi
@@ -1215,7 +1215,7 @@ _gated_repos() {
 
 # Allowlisted commit targets: `<path-or-pattern>|<reason>`. Data, not logic.
 COVERAGE_ALLOWLIST=(
-  "$HOME/.claude/.git|frozen local snapshot (git-policy.md §2: never hand-commit it; remote is config-source-remote-legacy). No converted surface publishes there: starter-kit 6a was rerouted to claude-promote (S6), /ninja-fix routes ~/.claude edits to claude-promote, and commit_scope.py publish REFUSES this root (post-S8 audit fix)."
+  "$HOME/.claude/.git|frozen local snapshot (git-policy.md §2: never hand-commit it; remote is config-source-remote-legacy). No converted surface publishes there: starter-kit 6a was rerouted to config-promote (S6), /ninja-fix routes ~/.claude edits to config-promote, and commit_scope.py publish REFUSES this root (post-S8 audit fix)."
   "starter-kit 6b temp clone (mktemp)|fresh private clone of starter-kit-claude with its own index; no other session can stage into it."
   "worktree_cutover.py plumbing commits|commit-tree + update-ref fire no pre-commit hook at all; bounded by a scratch GIT_INDEX_FILE instead (build-time checker territory, S7/A9)."
   "independent project repos (e.g. Personal/Per-App-Network-Routing, [YourProject]/[you], ~/repos/Q, ~/repos/double-check)|not in the worktree-per-topic model; installing this gate would also impose its out-of-worktree BLOCK on every ordinary commit there. /close and /ninja-fix publish into them through commit_scope.py publish, which scopes both verbs whether or not a hook runs."
@@ -1232,7 +1232,7 @@ COVERAGE_KNOWN_ISSUES=(
 # Is <hookpath> an installation of a hook whose script basename is <basename>?
 # Matched by BASENAME of the target, deliberately: the question here is "is the
 # gate installed", and the same hook is legitimately referenced from different
-# config roots (live ~/.claude, a claude-experiment clone). The installer's own
+# config roots (live ~/.claude, a config-experiment clone). The installer's own
 # ownership checks stay strict; this is a read-only report.
 _hook_installed_as() {  # $1 hookpath  $2 target-basename → 0 yes
   local hp="$1" want="$2" tgt

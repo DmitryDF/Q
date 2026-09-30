@@ -3,12 +3,12 @@
 #
 # The gate as written in the plan: "Two-terminal test: session A edits a rule
 # file, B promotes its own; assert A's file absent from the merge, A's live edit
-# byte-identical, the deploy verification clean, `claude-divergence-check` exit 0".
+# byte-identical, the deploy verification clean, `config-divergence-check` exit 0".
 #
 # ISOLATION (plan's Verification section): everything runs in a throwaway tree
 # under $TMPDIR with its own config source + destination and its own git repo.
 # NOTHING touches the real ~/.claude, the real config source, or any live repo.
-# The real `claude-promote` script is executed unmodified; `config-source` is reached
+# The real `config-promote` script is executed unmodified; `config-source` is reached
 # through a PATH shim that redirects -S/-D into the sandbox.
 #
 # The run is deliberately allowed to FAIL PART-WAY. By the time it does, the
@@ -19,10 +19,10 @@
 # WHERE it fails, measured rather than assumed — an earlier version of this
 # comment claimed the run "fails at `git push` because there is no remote", and a
 # checker showed that is wrong. `CLAUDE_CONFIG_DIR` points at the fake
-# destination, so claude-promote resolves CLASSIFY and LAND_PORT
+# destination, so config-promote resolves CLASSIFY and LAND_PORT
 # (`harness_code_paths.py`, `land_port.py`) inside it, and neither exists there.
 # The missing classifier sends it down the conservative "treat as code" branch,
-# and it then dies at the missing `land_port.py` guard (claude-promote:456-457) —
+# and it then dies at the missing `land_port.py` guard (config-promote:456-457) —
 # BEFORE `git push` is ever attempted. The EXIT-trap restore still fires, because
 # it fires on any non-zero exit before PUSH_SUCCESS=1, so every assertion below is
 # unaffected; only the stated cause was wrong.
@@ -31,7 +31,7 @@
 
 set -uo pipefail
 
-PROMOTE="${CLAUDE_CONFIG_DIR:-$HOME/.claude}/bin/claude-promote"
+PROMOTE="${CLAUDE_CONFIG_DIR:-$HOME/.claude}/bin/config-promote"
 REAL_CONFIG_SOURCE="$(command -v config-source 2>/dev/null)"
 PASS=0; FAIL=0
 
@@ -49,7 +49,7 @@ T="$(mktemp -d "${TMPDIR:-/tmp}/promote-scope-s3.XXXXXX")"
 # returns the normalised spelling, so a `${path#"$SRC"/}` prefix-strip against
 # the un-normalised value silently fails to strip and yields an absolute path
 # where a repo-relative one was wanted. That cost one debugging round here; it is
-# a harness bug only — claude-promote derives Q_CONFIG_SRC from config-source itself, so
+# a harness bug only — config-promote derives Q_CONFIG_SRC from config-source itself, so
 # both sides are normalised there.
 T="$(cd "$T" && pwd -P)"
 trap 'rm -rf "$T"' EXIT
@@ -166,7 +166,7 @@ fi
 echo "=== case 2: config-source verify is clean after the run ==="
 # SANDBOX ARTEFACT, stated rather than worked around silently: this harness lets
 # the run fail part-way (at the missing land_port.py guard — see the header), so
-# claude-promote's EXIT trap checks the default branch back out. That reverts the SOURCE to its seed
+# config-promote's EXIT trap checks the default branch back out. That reverts the SOURCE to its seed
 # state while LIVE still holds the promoted edits, which would make verify fail for
 # a reason that has nothing to do with A4. A real promotion merges the branch and
 # runs the deploy step. Restore the promotion branch first, so what is measured is
@@ -177,17 +177,17 @@ check "config-source verify exit 0 (live == managed state, on the promoted branc
 
 # The FOURTH assertion A4's validation gate names. It was missing from the first
 # version of this file — the gate lists four things and only three were asserted,
-# which an independent pre-check caught. `claude-divergence-check` enforces the
+# which an independent pre-check caught. `config-divergence-check` enforces the
 # staging >= prod invariant by reading the drift check and the configured source path,
 # both of which the PATH shim above redirects into the sandbox, so it runs here
 # unmodified. Do NOT pass its fetch flag: that would reach the real network and
 # the real origin, which this harness must never touch.
-DIVERGENCE="${CLAUDE_CONFIG_DIR:-$HOME/.claude}/bin/claude-divergence-check"
+DIVERGENCE="${CLAUDE_CONFIG_DIR:-$HOME/.claude}/bin/config-divergence-check"
 if [ -x "$DIVERGENCE" ]; then
   CLAUDE_CONFIG_DIR="$DEST/.claude" HOME="$DEST" "$DIVERGENCE" >/dev/null 2>&1
-  check "claude-divergence-check exit 0 (staging >= prod)" $?
+  check "config-divergence-check exit 0 (staging >= prod)" $?
 else
-  check "claude-divergence-check is present and executable" 1 "not found at $DIVERGENCE"
+  check "config-divergence-check is present and executable" 1 "not found at $DIVERGENCE"
 fi
 
 echo "=== case 2b: A's file is absent from THE MERGE, not just from the commit ==="
@@ -254,10 +254,10 @@ fi
 
 echo "=== case 3: an undeclared run fails CLOSED — publishes nothing, exit 0 ==="
 # S6/A8 flipped this from fail-OPEN. Exit 0 is deliberate and asserted: /close §4
-# runs claude-promote unflagged on every close that touched no harness file, and
+# runs config-promote unflagged on every close that touched no harness file, and
 # that must not become an error. What must hold is that NOTHING is published:
 # no promote/* branch, no new commit anywhere, and the dirty path is NAMED.
-# (claude-promote names its branch `promote/$(date +%Y%m%d-%H%M%S)`, so two runs
+# (config-promote names its branch `promote/$(date +%Y%m%d-%H%M%S)`, so two runs
 # inside the same second collide — wait it out so later cases measure scoping,
 # not branch-name collision.)
 sleep 1.1

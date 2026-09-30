@@ -54,7 +54,7 @@ and a runbook row cited that green count as evidence the worker had shipped.
 
 P17 is the only test here that exercises the production configuration, and what
 it asserts is a REFUSAL. The worker is not wired for production use;
-`claude-promote` is the harness's staging→prod path (git-policy.md §2).
+`config-promote` is the harness's staging→prod path (git-policy.md §2).
 
 `real-to-real` for the network tail is not reachable offline at all — it needs
 `gh` and a live remote — and the two config-source seams are only conditionally
@@ -170,7 +170,7 @@ def make_apply():
 
 
 def make_tail(outcome: str = "merged"):
-    """Fake claude-promote network tail. extra-safety → HOLD (no merge, no deploy)."""
+    """Fake config-promote network tail. extra-safety → HOLD (no merge, no deploy)."""
     def _tail(pr_mode):
         if pr_mode == "extra-safety":
             return "hold"
@@ -657,7 +657,7 @@ def p17_cli_refuses_unwired_seams():
               "nothing written to the shared source",
               r.returncode != 0
               and "unwired-seams" in out
-              and "claude-promote" in out              # names the path that IS wired
+              and "config-promote" in out              # names the path that IS wired
               and "Traceback" not in out               # a return, never a raise
               and sha(src) == before
               and not leaked_wt,

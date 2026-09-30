@@ -57,7 +57,7 @@ import pytest
 # documents as the anti-pattern a prior slice fixed ("Every path resolves
 # from `Path(__file__)`, never from `CLAUDE_CONFIG_DIR` and never from
 # `Path.home()`"): a `Path.home()`-rooted import always reads the LIVE tree
-# regardless of which tree (e.g. a `claude-experiment` clone) is under test.
+# regardless of which tree (e.g. a `config-experiment` clone) is under test.
 # Not every sibling in this directory resolves this way: several still pin
 # `Path.home()` directly, and `test_s3_walking_skeleton.py` fixed the same
 # underlying problem — a `Path.home()` pin silently binding the whole pytest

@@ -34,7 +34,7 @@ print_steps() {
     echo "  4. Rewrite ~/.claude/rules/prompt-engineering.md against those pages." >&2
     echo "  5. Update its 'Fetched: YYYY-MM-DD' line to today. That line — NOT the" >&2
     echo "     file mtime — is what this gate reads." >&2
-    echo "  6. Ship it: ~/.claude/bin/claude-promote" >&2
+    echo "  6. Ship it: ~/.claude/bin/config-promote" >&2
     echo "  7. Re-read the file." >&2
 }
 

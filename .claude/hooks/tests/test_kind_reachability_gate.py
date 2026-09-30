@@ -8,14 +8,14 @@ RUNS it — which is the entire point of the slice, and a different question wit
 different failure mode: every logic test can pass while the block never fires.
 
 WHAT IT DOES. It reproduces the deploy-check faithfully rather than approximating
-it: a candidate tree is rendered, the LIVE `claude-verify` is invoked against it
+it: a candidate tree is rendered, the LIVE `config-verify` is invoked against it
 through `CLAUDE_VERIFY_TARGET` with a SANITIZED env that omits
 `CLAUDE_CONFIG_DIR` (the same allowlist `land_port.py:825-828` builds, and the
 same variable `:950` sets), and the verdict is read the way the gate reads it —
 the first 400 characters of AGGREGATE stderr (`land_port.py:963`).
 
 Live is the reference: it must be GREEN and the block must NOT fire there, since
-the two `claude-promote` bookends run against live and only the deploy-check sets
+the two `config-promote` bookends run against live and only the deploy-check sets
 a target.
 
 THESE TESTS NEVER WRITE TO LIVE. Every mutation is applied to a `tmp_path` copy.
@@ -36,7 +36,7 @@ from pathlib import Path
 import pytest
 
 CONFIG_DIR = Path(os.environ.get("CLAUDE_CONFIG_DIR") or (Path.home() / ".claude"))
-CLAUDE_VERIFY = CONFIG_DIR / "bin" / "claude-verify"
+CLAUDE_VERIFY = CONFIG_DIR / "bin" / "config-verify"
 
 #: `land_port.DEFAULT_ENV_ALLOWLIST`. Mirrored rather than imported so this file
 #: states the contract it is testing; the assertion below pins them together, so
@@ -44,7 +44,7 @@ CLAUDE_VERIFY = CONFIG_DIR / "bin" / "claude-verify"
 ENV_ALLOWLIST = ("PATH", "HOME", "TMPDIR", "USER", "LOGNAME", "LANG", "LC_ALL",
                  "SHELL")
 
-#: What a rendered candidate needs to be checkable by `claude-verify --phase pre`.
+#: What a rendered candidate needs to be checkable by `config-verify --phase pre`.
 #
 # FAITHFUL, NOT MINIMAL — and the difference was load-bearing. This named five
 # directories and omitted four managed surfaces (`docs`, `state`, `CLAUDE.md`,
@@ -131,7 +131,7 @@ def read_seeded(port, source):
 
 pytestmark = pytest.mark.skipif(
     not CLAUDE_VERIFY.is_file(),
-    reason=f"claude-verify not present at {CLAUDE_VERIFY} — nothing to gate")
+    reason=f"config-verify not present at {CLAUDE_VERIFY} — nothing to gate")
 
 
 # --------------------------------------------------------------------------- #
@@ -168,7 +168,7 @@ def render_candidate(dest: Path) -> Path:
 
 
 def run_verify(target: Path | None, verbose: bool = False):
-    """`claude-verify --phase pre`, in the deploy-check's sanitized env.
+    """`config-verify --phase pre`, in the deploy-check's sanitized env.
 
     `target=None` is the LIVE invocation the two bookends make.
 
@@ -299,7 +299,7 @@ def test_render_candidate_is_faithful_to_config_source(tmp_path):
 
 
 def test_gate_does_not_run_against_live():
-    """The block must be absent from BOTH `claude-promote` bookends.
+    """The block must be absent from BOTH `config-promote` bookends.
 
     They run against live — the pre-bookend before the capture step, so no
     candidate even exists — and a reachability verdict about the shipper's own
@@ -360,7 +360,7 @@ def test_gate_names_the_kind_inside_the_truncation_budget(seeded_red):
     """C2 — read COLD, as the gate surfaces it, not as the module prints it.
 
     `land_port.py:963` keeps the first 400 characters of AGGREGATE stderr from
-    every check in `claude-verify`. A message that is correct but arrives past
+    every check in `config-verify`. A message that is correct but arrives past
     that point is a message nobody gets. If this fails, the message is wrong or
     the block has drifted behind a chattier check — not the budget.
     """
@@ -433,7 +433,7 @@ GUARD_LINE = 'if [ -n "${CLAUDE_VERIFY_TARGET:-}" ]; then'
 
 
 def _mutated_verify(dest: Path, kind: str) -> Path:
-    """A COPY of `claude-verify` with one half of the wiring disabled.
+    """A COPY of `config-verify` with one half of the wiring disabled.
 
     Never mutates live: the copy is written under `tmp_path` and invoked there.
     """
@@ -448,7 +448,7 @@ def _mutated_verify(dest: Path, kind: str) -> Path:
         text = text.replace(GUARD_LINE, "if true; then", 1)
     else:                                                     # pragma: no cover
         raise ValueError(kind)
-    path = dest / f"claude-verify-{kind}"
+    path = dest / f"config-verify-{kind}"
     path.write_text(text, encoding="utf-8")
     path.chmod(0o755)
     return path

@@ -34,7 +34,7 @@ sys.path.insert(0, str(HOOKS))
 import output_security as osec  # noqa: E402
 import output_security_registry as reg  # noqa: E402
 
-VERIFIER = CONFIG / "bin" / "claude-verify"
+VERIFIER = CONFIG / "bin" / "config-verify"
 
 
 @pytest.fixture(autouse=True)
@@ -961,7 +961,7 @@ def test_a6_no_shell_file_references_either_module():
 
 
 def test_a6_the_verifier_is_invisible_to_the_shell_assertion_so_it_is_a_legal_surface():
-    """A6 gate: `bin/claude-verify` has no suffix, so the .sh sweep never sees it."""
+    """A6 gate: `bin/config-verify` has no suffix, so the .sh sweep never sees it."""
     assert VERIFIER.suffix == ""
     assert VERIFIER not in set(reg.tree_files(CONFIG))
 

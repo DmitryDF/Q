@@ -41,7 +41,7 @@ esac
 
 # Resolved from THIS script's own directory rather than the tree's usual `$HOME/.claude`
 # convention. Deliberate: it makes the hook run against whichever config tree contains it,
-# so the `claude-experiment` clone this slice was built in exercises the clone's engine
+# so the `config-experiment` clone this slice was built in exercises the clone's engine
 # rather than reaching back into live — the same tree-relative property the two test modules
 # already rely on.
 HOOK_DIR="$(dirname "$0")"

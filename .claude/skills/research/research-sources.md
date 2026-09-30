@@ -23,7 +23,7 @@ about. One list, in one place, is the fix.
 engine's checker prompt is *rendered* from that registry, and
 `check_citation_marker_drift` compares the registry against this file and against
 `~/.claude/rules/research-scope-framing.md`. Change any one without the others and
-`claude-verify` fails and names the marker that diverged.
+`config-verify` fails and names the marker that diverged.
 
 **Adding a way to cite a new kind of source is one change touching all three:** the
 registry, this reference, and the rules mirror. There is no order in which a partial

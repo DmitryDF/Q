@@ -19,7 +19,7 @@
 set -u
 
 # Pin the config dir (where the hooks live) BEFORE isolating HOME, so the hook
-# path survives the HOME override on both a live run and a claude-experiment clone.
+# path survives the HOME override on both a live run and a config-experiment clone.
 : "${CLAUDE_CONFIG_DIR:=$HOME/.claude}"
 export CLAUDE_CONFIG_DIR
 HOOK="$CLAUDE_CONFIG_DIR/hooks/check-plan-gates.sh"

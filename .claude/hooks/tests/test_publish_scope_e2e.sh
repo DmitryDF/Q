@@ -10,9 +10,9 @@
 #                                          topic's Thoughts files, none of its own
 #   213237fa  /close          (Projects)  research-source-adapters close carried
 #                                          review-skill-system research files
-#   200a247   claude-promote  (config-source)   output-security S2 carried a concurrent
+#   200a247   config-promote  (config-source)   output-security S2 carried a concurrent
 #                                          re-synthesis of rules/prompt-engineering.md
-#   4e57836   claude-promote  (config-source)   source-picker promotion carried six
+#   4e57836   config-promote  (config-source)   source-picker promotion carried six
 #                                          output-security files
 #
 # (Repo and file lists measured from the commits themselves, not from prose.)
@@ -41,7 +41,7 @@ HOOKS="$CFG/hooks"
 SCOPE_SH="$HOOKS/session-scope.sh"
 CS_PY="$HOOKS/commit_scope.py"
 HELPER="$HOOKS/worktree-helper.sh"
-PROMOTE="$CFG/bin/claude-promote"
+PROMOTE="$CFG/bin/config-promote"
 RUN_PY="$CFG/skills/execute-plan/run.py"
 REAL_CONFIG_SOURCE="$(command -v config-source 2>/dev/null)"
 PASS=0; FAIL=0
@@ -67,7 +67,7 @@ staged()  { git -C "$1" diff --cached --name-only; }
 for need in "$SCOPE_SH" "$CS_PY" "$HELPER" "$PROMOTE" "$RUN_PY"; do
   [ -e "$need" ] || { echo "missing $need"; exit 1; }
 done
-[ -n "$REAL_CONFIG_SOURCE" ] || { echo "config-source not installed — cannot replay the claude-promote incidents"; exit 1; }
+[ -n "$REAL_CONFIG_SOURCE" ] || { echo "config-source not installed — cannot replay the config-promote incidents"; exit 1; }
 
 T="$(mktemp -d "${TMPDIR:-/tmp}/publish-scope-e2e.XXXXXX")"; T="$(cd "$T" && pwd -P)"
 trap 'rm -rf "$T"' EXIT
@@ -245,7 +245,7 @@ check "2b A's commit holds EXACTLY A's own spine + bookkeeping" $? "committed: $
 check "2b none of B's research files were committed OR staged" $?
 
 # --------------------------------------------------------------------------- #
-# config-source-shaped sandbox for claude-promote (same shim approach as S3's suite).
+# config-source-shaped sandbox for config-promote (same shim approach as S3's suite).
 # --------------------------------------------------------------------------- #
 mk_config_source() {  # $1 name -> sets DEST SRC SHIM
   local B="$T/$1"
@@ -258,7 +258,7 @@ EOF
   printf '#!/usr/bin/env bash\necho "https://example.invalid/pr/1"\n' > "$SHIM/gh"
   chmod +x "$SHIM/config-source" "$SHIM/gh"
 }
-promote() {  # env-bound run of the REAL claude-promote against the sandbox
+promote() {  # env-bound run of the REAL config-promote against the sandbox
   PATH="$SHIM:$PATH" CLAUDE_CONFIG_DIR="$DEST/.claude" HOME="$DEST" "$PROMOTE" --no-verify "$@" 2>&1
 }
 cz() { PATH="$SHIM:$PATH" config-source "$@"; }
@@ -285,7 +285,7 @@ src_armed() {  # bare commit in the harness source must be refused (it is otherw
   return $rc
 }
 
-echo "=== 3. 200a247 — claude-promote carried a concurrent rules/prompt-engineering.md ==="
+echo "=== 3. 200a247 — config-promote carried a concurrent rules/prompt-engineering.md ==="
 mk_config_source promote-200a247
 printf 'A registry v0\n' > "$DEST/.claude/hooks/os_registry.py"
 printf 'PE v0\n'         > "$DEST/.claude/rules/prompt-engineering.md"
@@ -303,7 +303,7 @@ PE_REL="$(src_rel "$DEST/.claude/rules/prompt-engineering.md")"
 BR0="$(promote_branches)"
 OUT="$(promote -m "S2 output-security")"
 [ "$(promote_branches)" = "$BR0" ] && has "$OUT" "publishing NOTHING" && has "$OUT" "prompt-engineering"
-check "3a an UNFLAGGED claude-promote now publishes nothing and names B's rule file" $? "$OUT"
+check "3a an UNFLAGGED config-promote now publishes nothing and names B's rule file" $? "$OUT"
 # ...and the raw commit that produced it is refused by the gate in the source.
 git -C "$SRC" add -A
 H="$(head_of "$SRC")"
@@ -326,7 +326,7 @@ check "3b B's LIVE edit is byte-identical after A's promotion" $?
 ! has "$(git -C "$SRC" log -1 --format=%B "$BR")" "Unscoped-Publish:"
 check "3b a declared promotion carries no waiver trailer" $?
 
-echo "=== 4. 4e57836 — claude-promote carried six output-security files ==="
+echo "=== 4. 4e57836 — config-promote carried six output-security files ==="
 mk_config_source promote-4e57836
 printf 'picker v0\n' > "$DEST/.claude/hooks/source_picker.py"
 for i in 1 2 3 4 5 6; do printf 'os v0\n' > "$DEST/.claude/hooks/os_file_$i.py"; done
@@ -343,7 +343,7 @@ BR0="$(promote_branches)"
 # produced 4e57836 is refused by the gate.
 OUT="$(promote -m "source picker + approval gate")"
 [ "$(promote_branches)" = "$BR0" ] && has "$OUT" "publishing NOTHING" && has "$OUT" "os_file_"
-check "4a an UNFLAGGED claude-promote publishes nothing and names B's files" $? "$OUT"
+check "4a an UNFLAGGED config-promote publishes nothing and names B's files" $? "$OUT"
 H="$(head_of "$SRC")"
 ERR="$(PATH="$SHIM:$PATH" git -C "$SRC" commit -m "source picker + approval gate" 2>&1)"
 [ "$(head_of "$SRC")" = "$H" ] && has "$ERR" "scope BLOCKED" && has "$ERR" "os_file_1"
@@ -425,7 +425,7 @@ grep -q 'ALLOW_OUT_OF_TREE=1 python3 ~/\.claude/hooks/commit_scope\.py publish' 
 check "5.6 the SKILL documents the out-of-tree override as its primary-checkout path" $?
 
 # 5.7-5.8 — the OTHER half of /ninja-fix's publish contract: a file in the managed
-# ~/.claude scope must route to `claude-promote --paths`, never a commit in the
+# ~/.claude scope must route to `config-promote --paths`, never a commit in the
 # frozen ~/.claude/.git (D3). Until now neither half of this branch was covered:
 # section 5 only ever exercised the commit_scope path, and the 2026-09-18 real run
 # edited a Projects file, so the managed-scope branch had no test AND no real run.
@@ -442,17 +442,17 @@ printf 'rule\n' > "$FROZ/rules/"  2>/dev/null || mkdir -p "$FROZ/rules"
 printf 'rule\n' > "$FROZ/rules/x.md"
 H="$(head_of "$FROZ")"
 OUT="$(COMMIT_SCOPE_FROZEN_ROOT="$FROZ" python3 "$CS_PY" publish --repo "$FROZ" -m "[ninja-fix] managed-scope edit" -- "rules/x.md" 2>&1)"; rc=$?
-[ "$rc" -ne 0 ] && [ "$(head_of "$FROZ")" = "$H" ] && has "$OUT" "frozen harness snapshot" && has "$OUT" "claude-promote"
-check "5.7 publish REFUSES the frozen harness root and names claude-promote instead" $? "rc=$rc $OUT"
+[ "$rc" -ne 0 ] && [ "$(head_of "$FROZ")" = "$H" ] && has "$OUT" "frozen harness snapshot" && has "$OUT" "config-promote"
+check "5.7 publish REFUSES the frozen harness root and names config-promote instead" $? "rc=$rc $OUT"
 # Anti-vacuity: the identical publish on the identical repo SUCCEEDS once the root
 # is not the declared frozen one, so 5.7's refusal is attributable to frozen-root
 # detection, not to the repo, the file, or a missing gate.
 OUT="$(ALLOW_OUT_OF_TREE=1 COMMIT_SCOPE_FROZEN_ROOT="$T/not-the-frozen-root" python3 "$CS_PY" publish --repo "$FROZ" -m "[ninja-fix] managed-scope edit" -- "rules/x.md" 2>&1)"
 [ "$(head_of "$FROZ")" != "$H" ] && [ "$(tip_files "$FROZ")" = "rules/x.md" ]
 check "5.8 the same publish succeeds when the root is NOT the frozen one (5.7 is not vacuous)" $? "$OUT"
-grep -q 'claude-promote -m "\[ninja-fix\] <one-sentence rationale>" --paths' "$CFG/skills/ninja-fix/SKILL.md" \
+grep -q 'config-promote -m "\[ninja-fix\] <one-sentence rationale>" --paths' "$CFG/skills/ninja-fix/SKILL.md" \
   && grep -q 'do NOT use `publish`' "$CFG/skills/ninja-fix/SKILL.md"
-check "5.9 the SKILL routes managed-scope ~/.claude files to claude-promote --paths" $?
+check "5.9 the SKILL routes managed-scope ~/.claude files to config-promote --paths" $?
 # 5.10 — the DEFAULT frozen-root resolution, which 5.7 does not reach. 5.7 supplies
 # COMMIT_SCOPE_FROZEN_ROOT, so a regression in commit_scope.py's default
 # (Path.home()/".claude") would leave 5.7 and 5.8 green while the real harness repo
@@ -510,8 +510,8 @@ check "7c a declared commit in the same repo carries NO trailer" $?
 echo "=== 8. static layers over the config under test ==="
 OUT="$(bash "$HOOKS/check-publish-scope.sh" --root "$CFG" 2>&1)"; rc=$?
 [ "$rc" -eq 0 ]; check "8a check-publish-scope.sh clean" $? "$OUT"
-OUT="$(CLAUDE_VERIFY_TARGET="$CFG" CLAUDE_CONFIG_DIR="$CFG" bash "$CFG/bin/claude-verify" --phase pre 2>&1)"; rc=$?
-[ "$rc" -eq 0 ]; check "8b claude-verify --phase pre clean" $? "$(tail -5 <<< "$OUT")"
+OUT="$(CLAUDE_VERIFY_TARGET="$CFG" CLAUDE_CONFIG_DIR="$CFG" bash "$CFG/bin/config-verify" --phase pre 2>&1)"; rc=$?
+[ "$rc" -eq 0 ]; check "8b config-verify --phase pre clean" $? "$(tail -5 <<< "$OUT")"
 OUT="$(BOOKKEEPING_MODEL_FILE="$CFG/rules/bookkeeping-model.md" python3 "$HOOKS/bookkeeping_paths.py" check-drift 2>&1)"; rc=$?
 [ "$rc" -eq 0 ]; check "8c bookkeeping_paths check-drift clean" $? "$OUT"
 OUT="$(bash "$HOOKS/tests/test_commit_gate_scope.sh" 2>&1)"; rc=$?

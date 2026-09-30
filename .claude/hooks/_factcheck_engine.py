@@ -93,7 +93,7 @@ from _citation_reconcile import reconcile_citation_labels  # noqa: E402
 
 # Derived from this module's own location, not `Path.home()`, so every rules-mirror
 # path built from it is candidate-aware: a deploy-check run as
-# `CLAUDE_VERIFY_TARGET=<render>/.claude` (claude-verify's documented idiom) compares
+# `CLAUDE_VERIFY_TARGET=<render>/.claude` (config-verify's documented idiom) compares
 # the RENDERED candidate tree's own mirrors rather than the live tree it is about to
 # replace. On a live run this resolves to `~/.claude` exactly as before. This module
 # lives at `<config>/hooks/_factcheck_engine.py`, so its grandparent is `<config>`.
@@ -6405,7 +6405,7 @@ def _citation_projects_root_candidates():
     Returns a list, not a single answer, because the canonical resolver
     (`bookkeeping_resolver.projects_root`) reads the git config of the repo the CWD
     belongs to and REFUSES (returns None) when the CWD is elsewhere — and the surface
-    that matters, `claude-promote`, never cd's, so it runs with the operator's ambient
+    that matters, `config-promote`, never cd's, so it runs with the operator's ambient
     CWD. A single-answer resolver would therefore silently miss the mirror whenever
     promotion happened from ~ or from the config source tree.
 
@@ -6615,7 +6615,7 @@ def check_citation_marker_drift(rules_path=None, reference_path=None):
 
 def _assert_citation_markers_consistent(rules_path=None, reference_path=None):
     """Lazy guard: raise RuntimeError naming every divergent marker. No-op when
-    consistent. Not fired at import — the CLI and claude-verify are the surfaces."""
+    consistent. Not fired at import — the CLI and config-verify are the surfaces."""
     divergences = check_citation_marker_drift(rules_path, reference_path)
     if divergences:
         raise RuntimeError(
@@ -8869,14 +8869,14 @@ def cmd_check_citation_marker_drift():
     skipped = sorted(k for k, p in paths.items() if not p.exists())
     # A PASS must never imply a coverage this run did not have. The skip goes to
     # STDOUT and is part of the PASS line itself, because the registered surface
-    # (claude-verify, driven by claude-promote without --verbose) discards anything
+    # (config-verify, driven by config-promote without --verbose) discards anything
     # that only a verbose logger would print — a skip nobody sees is how an
     # under-reaching guard reports success.
     coverage = f"checked: {', '.join(checked)}" if checked else "checked: NOTHING"
     # Since S2 both mirrors are required, so a missing one returns 1 above and this
     # branch cannot be reached on the PASS path. Kept, not deleted: the coverage
     # line's contract ("a PASS never implies coverage the run did not have") is
-    # what claude-verify greps for, and a future optional mirror would need it.
+    # what config-verify greps for, and a future optional mirror would need it.
     if skipped:
         coverage += f"; NOT COMPARED: {', '.join(skipped)}"
     print(

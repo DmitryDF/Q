@@ -22,7 +22,7 @@
 #     Thoughts spines) — allowed without prompting;
 #   * any commit in the harness (config-source) PRIMARY clone — a promotion
 #     surface with no topic-worktree workflow — allowed structurally, retiring
-#     the claude-promote ALLOW_OUT_OF_TREE bridge.
+#     the config-promote ALLOW_OUT_OF_TREE bridge.
 # A MIXED commit (bookkeeping + domain) is NOT silently allowed — it falls
 # through to block-with-override with guidance to split it.
 #
@@ -44,7 +44,7 @@ set -uo pipefail
 # REFUSED (exit 1) with the offending paths, the declared-publish command, and
 # the named override. It was built in S2 as WARN mode — report and fall through,
 # no exit path changed — and flipped only after every publish surface was
-# converted (S3 claude-promote, S4 /close, S5 execute-plan, /ninja-fix,
+# converted (S3 config-promote, S4 /close, S5 execute-plan, /ninja-fix,
 # starter-kit), because an enforcing gate landing first would have broken every
 # /close in both repos.
 #
@@ -58,7 +58,7 @@ SCOPE_MODE="enforce"   # enforce | warn
 # in this file. It now sits AFTER the scope stage, deliberately: checked first,
 # `ALLOW_OUT_OF_TREE=1 git commit` would yield an unscoped commit that is
 # neither warned about nor (at S6) refused nor trailered — an untraced path for
-# the exact defect this stage exists to catch, via an idiom `claude-promote`
+# the exact defect this stage exists to catch, via an idiom `config-promote`
 # documents as its retired bridge. That variable governs WORKTREE PLACEMENT;
 # keeping the two overrides genuinely separate requires it to stop
 # short-circuiting the scope test. The scope stage likewise runs ahead of the

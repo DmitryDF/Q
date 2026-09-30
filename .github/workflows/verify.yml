@@ -144,6 +144,96 @@ jobs:
           fi
           exit $fail
 
+      - name: The gates are actually wired
+        run: |
+          # THE WORST DEFECT OF THIS RELEASE shipped for 36 pushes:
+          # settings.example.json carried `"hooks": {}` — zero of 142 registrations —
+          # so every gate was inert for every adopter while INSTALL claimed otherwise.
+          # Checked here because CI is the only layer a manual push cannot skip.
+          python3 - <<'PY'
+          import json, os, sys
+          if not os.path.isfile("settings.example.json"):
+              print("no settings.example.json yet (push 0) — skipping"); sys.exit(0)
+          hooks_dir = ".claude/hooks"
+          if not os.path.isdir(hooks_dir):
+              print("no hooks ship yet — skipping"); sys.exit(0)
+          reg = (json.load(open("settings.example.json")).get("hooks") or {})
+          total = sum(len(e.get("hooks", [])) for v in reg.values()
+                      if isinstance(v, list) for e in v)
+          scripts = len([f for f in os.listdir(hooks_dir) if f.endswith((".sh", ".py"))])
+          print(f"{scripts} hook script(s) ship; {total} registration(s)")
+          if total == 0:
+              sys.exit("::error::settings.example.json registers ZERO hooks — every gate would be inert")
+          missing = []
+          for v in reg.values():
+              if not isinstance(v, list):
+                  continue
+              for e in v:
+                  for h in e.get("hooks", []):
+                      c = h.get("command", "")
+                      if "hooks/" in c:
+                          n = c.split("hooks/")[-1].split()[0].strip('"\'')
+                          if not os.path.isfile(os.path.join(hooks_dir, n)):
+                              missing.append(n)
+          if missing:
+              sys.exit(f"::error::registrations point at hooks that do not ship: {sorted(set(missing))[:5]}")
+          print("OK — registrations present, every target ships")
+          PY
+
+      - name: No tooling the release does not contain
+        run: |
+          # `.claude/bin` ships nothing, yet the tree once named `claude-promote` 119
+          # times, `claude-verify` 57, `claude-experiment` 38 — telling an adopter to
+          # run commands only the author has. The build generalises them; this refuses
+          # a tree where one came back.
+          if grep -rnE --exclude-dir=.git --exclude=verify.yml --exclude=verify_kit.py \
+               'claude-promote|claude-verify|claude-experiment|claude-divergence-check|chezmoi' . ; then
+            echo "::error::a shipped file names deploy tooling that is not in this release"
+            exit 1
+          fi
+          echo "OK"
+
+      - name: The engine's rules mirror ships with it
+        run: |
+          # /double-check raised RuntimeError for any adopter with pydantic installed:
+          # its audit-marker path asserts DC_AXIS_REGISTRY against
+          # rules/double-check-allocation.md, and a MISSING mirror counts as drift.
+          # The mirror was never in the register.
+          if [ -f .claude/hooks/_factcheck_engine.py ]; then
+            test -f .claude/rules/double-check-allocation.md \
+              || { echo "::error::the engine ships without the mirror it asserts"; exit 1; }
+            python3 - <<'PY'
+          import sys
+          sys.path.insert(0, ".claude/hooks")
+          import _factcheck_engine as fc
+          d = fc.check_allocation_drift(rules_path="/".join([".claude", "rules", "double-check-allocation.md"]))
+          if d:
+              sys.exit("::error::DC allocation drift: " + "; ".join(d)[:300])
+          print(f"OK — {len(fc.DC_AXIS_REGISTRY)} artifact types, mirror consistent")
+          PY
+          else
+            echo "engine not in this release yet — skipping"
+          fi
+
+      - name: Withheld and author-only content stays out
+        run: |
+          # /prioritize is withheld by owner decision; the strip is a build transform,
+          # so a register edit or a transform bug could ship it again silently.
+          if grep -rnE --exclude-dir=.git \
+               'PRIORITIZE_STATE_DIR|prioritize_advance|prioritize-start|PRIORITIZE_CADENCE_DAYS' . ; then
+            echo "::error::the withheld /prioritize subsystem is present"; exit 1
+          fi
+          # Development scaffolding is not a shipped test.
+          fail=0
+          for f in probe_commit_styles.sh smoke_verify_then_land_deploy.sh \
+                   smoke_auto_registration_e2e.py mutate_publish_scope.py \
+                   _live_corpus.py plan_env.sh; do
+            if [ -f ".claude/hooks/tests/$f" ]; then
+              echo "::error::author-side probe shipped: $f"; fail=1
+            fi
+          done
+          exit $fail
+
       - name: Commit identity (D11) — the one leak no content scan can see
         run: |
           # Irreversible once public, so it is checked on every push rather than once.

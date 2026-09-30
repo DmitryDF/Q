@@ -1287,7 +1287,7 @@ def test_a_code_only_declaration_leaves_the_web_read_unscoped(tmp_path, monkeypa
 def test_code_is_reachable_and_carries_no_stale_exemption():
     """A6 — the deletion that must ride the driver's own commit.
 
-    `claude-verify` runs this check only on the deploy path, so a split commit
+    `config-verify` runs this check only on the deploy path, so a split commit
     passes every local gate and fails at promotion. This is the local assertion
     that does not wait for that.
     """

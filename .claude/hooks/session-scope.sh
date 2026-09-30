@@ -55,7 +55,7 @@ SCOPE_FILE="$LOG_DIR/_session_scope-$SESSION_ID.md"
 # D1 — READ THE LEDGER WHEREVER /close LEFT IT. /close §2 archives
 # `_session_files-<SID>.log` into `_processed/` BEFORE §3 and §4 call this script.
 # Reading only the live location made §3 declare nothing of the session's own
-# (just the reconciled TODO/Diary/Stats) and §4 hand claude-promote an empty scope,
+# (just the reconciled TODO/Diary/Stats) and §4 hand config-promote an empty scope,
 # so the close committed bookkeeping only and promoted nothing. Both locations are
 # read, live first; a session that wrote more after an earlier archive has both.
 _ledger_lines() {
@@ -76,7 +76,7 @@ _real() {  # $1 path -> resolved path if it exists, else the input unchanged
 }
 
 # --- --harness-scope: the ~/.claude-scoped projection (A6 §4) ----------------
-# /close §4 must hand `claude-promote` the session's OWN ~/.claude paths as
+# /close §4 must hand `config-promote` the session's OWN ~/.claude paths as
 # `--session-scope`. The ledger already records absolute paths spanning both
 # roots, so that list is a PROJECTION of this same ledger, not a new mechanism —
 # which is why it belongs in the ledger's existing reader rather than in skill
@@ -91,12 +91,12 @@ _real() {  # $1 path -> resolved path if it exists, else the input unchanged
 # RESTRICTED TO THE MANAGED-CONFIG SCOPE, which is the load-bearing part. Being
 # under ~/.claude is NOT sufficient: `plans/` and `logs/` are session-transient
 # and config-source-managed by neither ignore rule nor add, so declaring one would make
-# `claude-promote`'s step 2a `config-source add` it — promoting this session's own
+# `config-promote`'s step 2a `config-source add` it — promoting this session's own
 # run-state into the shared config. Observed directly: an unrestricted projection
 # offered `plans/<topic>.run-state.json`.
 #
 # The allowed set is not invented here. It is the harness's own managed scope,
-# the list `claude-experiment spawn` clones and the global CLAUDE.md quotes:
+# the list `config-experiment spawn` clones and the global CLAUDE.md quotes:
 # agents, bin, CLAUDE.md, hooks, rules, settings.json, skills. Anything outside
 # it is dropped silently — it was never promotable, so its absence is not a loss.
 # --- --publish-scope: the declared list /close §3 publishes (A6) -------------

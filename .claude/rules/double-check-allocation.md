@@ -1,7 +1,7 @@
 # /double-check Allocation & Axis Catalog (Layer-2 mirror)
 
 This file is the **human-readable mirror** of the code-authoritative
-`DC_AXIS_REGISTRY` in `${KIT_HOOKS_DIR}/_factcheck_engine.py`. It carries the
+`DC_AXIS_REGISTRY` in `~/.claude/hooks/_factcheck_engine.py`. It carries the
 per-artifact-type axis catalog and the shared allocation rule for the
 `/double-check` Validation engine.
 
@@ -10,7 +10,7 @@ function (`check_allocation_drift` in the engine) normalizes both this file's
 catalog table and the code registry to `(artifact_type → axis-set)` maps and
 **hard-fails on any divergence, naming the divergent type/axis** — at engine load
 (lazily, on the double-check audit path) AND at commit time (via
-`${KIT_HOOKS_DIR}/check-double-check-allocation.sh`). The two copies cannot diverge
+`~/.claude/hooks/check-double-check-allocation.sh`). The two copies cannot diverge
 silently. Edit one without the other and the affected path refuses to run and the
 commit is blocked.
 
@@ -89,6 +89,6 @@ enforcement logic lives in this prose (Layer 2 = data/rules, not code).
 - `_factcheck_engine.py` — `DC_AXIS_REGISTRY` (authoritative source), `check_allocation_drift`
   (the comparison function), `_assert_dc_allocation_consistent` (lazy load-time guard),
   `cmd_check_allocation_drift` (the `check-allocation-drift` CLI).
-- `${KIT_HOOKS_DIR}/check-double-check-allocation.sh` — commit-time drift guard (invokes
+- `~/.claude/hooks/check-double-check-allocation.sh` — commit-time drift guard (invokes
   the CLI; exit ≠ 0 + stderr names the divergent type/axis).
 - S3 — interpolates each type's `AxisSpec` (from the code registry) into the checker prompt.

@@ -141,6 +141,25 @@ regardless.
 
 If the user has no preference, use `standard` and tell them you did.
 
+## A note on `config-promote`, `config-verify` and `config-experiment`
+
+Several rules files and skills name these three steps — `/close` routes harness changes
+through `config-promote`, `git-policy.md` cites `config-verify` as the gate that runs
+before a change lands, and `config-experiment` is the sandbox for editing a hook without
+breaking the live one.
+
+**Q does not ship them, and they are not commands you are missing.** They are the shape
+of a deploy step, named so the rules can refer to it: capture the change in whatever
+holds your config, verify it, land it. The system Q was extracted from implements them
+as three scripts over a dotfile manager; yours might be a git repo and two aliases, or
+nothing at all.
+
+If you have no such step, the skills still work — you will see the name in a sentence
+explaining where a change is supposed to go, and you can put it wherever you keep your
+configuration. If you do build one, keeping these names saves you editing the rules.
+
+---
+
 ## Step 6 — Merge the hook registrations
 
 Hooks are what turn these skills from advice into gates. This release ships **142 hook scripts**. `settings.example.json` registers exactly those of them that are present in this tree — a registration never points at a hook that is not here, and a hook this release does not contain is never registered. Some scripts ship without a registration because the event that drives them belongs to a later push; the command below prints what is actually wired.

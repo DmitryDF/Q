@@ -62,9 +62,9 @@ from bookkeeping_resolver import main_checkout  # noqa: E402
 DEFAULT_ENV_ALLOWLIST = ("PATH", "HOME", "TMPDIR", "USER", "LOGNAME", "LANG", "LC_ALL", "SHELL")
 
 # The harness's de-facto canonical check command (design A6 — no justfile/Makefile
-# exists; claude-verify is the read-only structural + drift gate claude-promote
+# exists; config-verify is the read-only structural + drift gate config-promote
 # bookends). Overridable per adapter (and by tests).
-DEFAULT_CHECK_CMD = ("claude-verify", "--phase", "pre")
+DEFAULT_CHECK_CMD = ("config-verify", "--phase", "pre")
 
 
 @dataclass
@@ -116,7 +116,7 @@ class DeployCheckResult:
     """Outcome of `verify_deploy_candidate` — renders a config-source candidate to a
     throwaway destination and runs the canonical check AGAINST THE RENDERED
     TREE (never the attribute-mangled `dot_claude/` source layout, which is
-    the wrong shape for `claude-verify` and would vacuously pass). Standalone
+    the wrong shape for `config-verify` and would vacuously pass). Standalone
     S1 addition — does not replace or modify `LandResult` / the existing
     `VerifyThenLandAdapter.dry_run_diff()` in-source check."""
 
@@ -536,7 +536,7 @@ class PromotionAdapter(LandPort):
         TOCTOU reconcile). On a genuine conflict: `git merge --abort`, release,
         and surface — NEVER strand the shared source in MERGE_HEAD (which would
         block ALL future promotions). Commit, capture the approved SHA, release.
-      * promote — reuse claude-promote's `.pr-mode`-gated tail IN ORDER
+      * promote — reuse config-promote's `.pr-mode`-gated tail IN ORDER
         (push → PR → merge; `quick` self-merges, `extra-safety` HOLDS with NO
         prod deploy) → THEN a SEPARATE deploy-mutex around ONLY the path-scoped
         the deploy step from the pinned/merged SHA → green tag. Deploy runs AFTER
@@ -699,7 +699,7 @@ class PromotionAdapter(LandPort):
             + (" is" if len(missing) == 1 else " are")
             + " unset, so it could advance the shared source and then be unable to "
               "publish or deploy. Refusing before anything is written. Use "
-              "`claude-promote`, which is the harness's wired staging→prod path "
+              "`config-promote`, which is the harness's wired staging→prod path "
               "(git-policy.md §2).",
         )
 
@@ -742,10 +742,10 @@ class PromotionAdapter(LandPort):
         c = self.network_tail_cmd
         if c is None:
             # Production: the worker delegates the push→PR→merge tail to
-            # claude-promote's proven `.pr-mode`-gated flow (A4 reuse). No safe
+            # config-promote's proven `.pr-mode`-gated flow (A4 reuse). No safe
             # default here — refuse rather than half-implement the network tail.
             raise RuntimeError(
-                "network_tail_cmd required — the worker wires claude-promote's "
+                "network_tail_cmd required — the worker wires config-promote's "
                 "PR/merge tail; tests inject a fake"
             )
         if callable(c):
@@ -916,7 +916,7 @@ class PromotionAdapter(LandPort):
             self._record("pr_merge")
         if outcome == "hold":
             # extra-safety .pr-mode: PR open, external review required — NO prod
-            # deploy until the PR merges externally (mirrors claude-promote:188-199).
+            # deploy until the PR merges externally (mirrors config-promote:188-199).
             return LandResult(
                 "hold",
                 "extra-safety .pr-mode: PR opened, external review required — no prod "
@@ -1088,10 +1088,10 @@ class PromotionAdapter(LandPort):
 #
 # `VerifyThenLandAdapter.dry_run_diff()` above runs the canonical check inside
 # the config-source SOURCE tree (`dot_claude/hooks/...`) — the wrong layout for
-# `claude-verify`, which expects a rendered `~/.claude`-shaped tree, so that
+# `config-verify`, which expects a rendered `~/.claude`-shaped tree, so that
 # check is a vacuous pass for harness deploys. This is a NEW, reusable,
 # additive check: it does not modify `dry_run_diff()`/`apply()`/`promote()`
-# on either adapter above. It is invoked by the `claude-promote` bash tool
+# on either adapter above. It is invoked by the `config-promote` bash tool
 # via the `verify-deploy-candidate` CLI verb.
 # ─────────────────────────────────────────────────────────────────────────────
 
@@ -1181,7 +1181,7 @@ def verify_deploy_candidate(
 ) -> DeployCheckResult:
     """Render `source_dir` (a config source/candidate checkout) via
     `the deploy step --source <source_dir> --destination <tmp>/dest --force`,
-    then run `check_cmd` (default `claude-verify --phase pre`) against the
+    then run `check_cmd` (default `config-verify --phase pre`) against the
     RENDERED tree with `CLAUDE_VERIFY_TARGET=<tmp>/dest/.claude` — the correct
     layout for the check, unlike the in-source check `dry_run_diff()` runs.
 
@@ -1357,7 +1357,7 @@ def _promote_cli(args) -> int:
 
 
 def _verify_deploy_candidate_cli(args) -> int:
-    """CLI verb for `verify_deploy_candidate` — invoked by the `claude-promote`
+    """CLI verb for `verify_deploy_candidate` — invoked by the `config-promote`
     bash tool as the deploy-path check. Exit codes: 0 = green, 5 = red,
     3 = usage/setup error (e.g. --repo is not a git repo). Note: argparse's
     own required-argument enforcement exits with ITS default code (2), not 3 —
@@ -1400,7 +1400,7 @@ def _cli(argv: Optional[List[str]] = None) -> int:
     pv.add_argument("--topic", required=True, help="topic branch/ref to land")
     pv.add_argument("--main", default="main", help="target branch (default: main)")
     pv.add_argument("--check-cmd", default=None,
-                    help="canonical check command (default: claude-verify --phase pre)")
+                    help="canonical check command (default: config-verify --phase pre)")
     pv.add_argument("--lock-timeout", type=float, default=None)
 
     prb = sub.add_parser("rollback", help="git revert -m 1 a landed merge")
@@ -1427,7 +1427,7 @@ def _cli(argv: Optional[List[str]] = None) -> int:
     pd.add_argument("--tip-sha", default=None, help="default: HEAD of --repo")
     pd.add_argument("--main-at-build", default=None, help="informational, recorded in the note payload")
     pd.add_argument("--check-cmd", default=None,
-                    help="canonical check command (default: claude-verify --phase pre)")
+                    help="canonical check command (default: config-verify --phase pre)")
     pd.add_argument("--no-note", action="store_true", help="do not write the git-note receipt on green")
     pd.add_argument("--notes-ref", default="verify-then-land")
     pd.add_argument("--tmp-root", default=None, help="parent dir for the mktemp render dir")

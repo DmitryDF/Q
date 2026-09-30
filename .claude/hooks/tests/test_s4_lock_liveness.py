@@ -539,7 +539,7 @@ class HookScripts(unittest.TestCase):
             self.assertTrue((sb.tmp / "legacy__p.lock").exists())
 
     def test_G9_every_registered_hook_command_resolves(self):
-        """The canonical pre-check (`claude-verify --phase pre`) verifies that the
+        """The canonical pre-check (`config-verify --phase pre`) verifies that the
         files under hooks/*.sh are executable, NOT that every command registered
         in settings.json resolves — a registered-but-missing hook passes it
         (measured 2026-09-20 during S4: a settings.json naming

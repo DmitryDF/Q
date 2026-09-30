@@ -33,6 +33,6 @@
   ],
   "harness_main_owned": {
     "recognize_by": "config-source-repo",
-    "note": "The harness (config source) repo has NO topic-worktree workflow — every commit in its PRIMARY clone is a main-side promotion (claude-promote / a named main-side infrastructure committer). A5's commit-gate recognizes this structurally (repo toplevel == the configured source path) so the S1->S2 ALLOW_OUT_OF_TREE=1 bridge in claude-promote is retired. This is the 'legitimate main-side infrastructure committer' the S1 gate message already named."
+    "note": "The harness (config source) repo has NO topic-worktree workflow — every commit in its PRIMARY clone is a main-side promotion (config-promote / a named main-side infrastructure committer). A5's commit-gate recognizes this structurally (repo toplevel == the configured source path) so the S1->S2 ALLOW_OUT_OF_TREE=1 bridge in config-promote is retired. This is the 'legitimate main-side infrastructure committer' the S1 gate message already named."
   }
 }

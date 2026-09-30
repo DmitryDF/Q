@@ -15,7 +15,7 @@ from pathlib import Path
 
 import pytest
 
-# Respect CLAUDE_CONFIG_DIR so a claude-experiment clone tests its OWN hooks (S3).
+# Respect CLAUDE_CONFIG_DIR so a config-experiment clone tests its OWN hooks (S3).
 HOOKS = Path(os.environ.get("CLAUDE_CONFIG_DIR", str(Path.home() / ".claude"))) / "hooks"
 PPG_PY = HOOKS / "pre_plan_gates.py"
 

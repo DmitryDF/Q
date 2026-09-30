@@ -927,7 +927,7 @@ through the Marker Contract.
 **This table is an asserted MIRROR.** The authoritative list is
 `CITATION_MARKER_REGISTRY` in `${KIT_HOOKS_DIR}/_factcheck_engine.py`, and
 `check_citation_marker_drift` compares the two — a change made here but not there
-(or the reverse) fails `claude-verify` and names the divergent marker. Edit the
+(or the reverse) fails `config-verify` and names the divergent marker. Edit the
 registry and every mirror in ONE change; the human-facing long form of this table,
 with meanings and antipattern rules, is `Skills/research-sources.md`.
 

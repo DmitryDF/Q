@@ -728,14 +728,14 @@ def publish(paths: Sequence[str],
     # `config-source-remote-legacy`, so a commit there is invisible to the shared repo and
     # outside every gate. A `publish --repo <root of the edited file>` for a
     # `~/.claude` file resolved exactly there — found by an independent post-S8
-    # audit of /ninja-fix. Harness changes go through `claude-promote --paths`.
+    # audit of /ninja-fix. Harness changes go through `config-promote --paths`.
     frozen = _frozen_harness_root()
     if frozen is not None and root == frozen:
         raise PublishError(
             f"refusing to commit into {root}: it is the frozen harness snapshot "
             "(git-policy.md §2 — its remote is config-source-remote-legacy and it carries no "
             "commit hooks). Publish harness changes with:\n"
-            "  ~/.claude/bin/claude-promote -m \"<message>\" --paths \"<live ~/.claude paths>\"")
+            "  ~/.claude/bin/config-promote -m \"<message>\" --paths \"<live ~/.claude paths>\"")
 
     rels = sorted({p for p in paths if p})
 

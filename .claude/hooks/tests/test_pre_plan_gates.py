@@ -22,7 +22,7 @@ import unittest
 import uuid
 from pathlib import Path
 
-# Respect CLAUDE_CONFIG_DIR so claude-experiment staging clones test their OWN
+# Respect CLAUDE_CONFIG_DIR so config-experiment staging clones test their OWN
 # hooks; defaults to live ~/.claude in production.
 HOOKS = Path(os.environ.get("CLAUDE_CONFIG_DIR", str(Path.home() / ".claude"))) / "hooks"
 PPG_PY = HOOKS / "pre_plan_gates.py"

@@ -11,7 +11,7 @@ Makes plan-mode validation a CONSUMER of the shared validation engine:
        an engine convergence change is observed by plan validation with no plan-side edit.
 
 Hooks are resolved RELATIVE to this test file so the suite runs unchanged on a
-`claude-experiment` clone (dev) and on live `~/.claude` (post-promote). Each
+`config-experiment` clone (dev) and on live `~/.claude` (post-promote). Each
 subprocess gets an isolated HOME so receipt/state writes never touch live state.
 
 Run: python3 <hooks>/tests/test_plan_validation_engine_consumer.py

@@ -130,7 +130,7 @@ def test_a2_the_three_loci_agree():
     """The registry and the rules mirror must not diverge.
 
     Compared against the mirror in the engine's OWN tree, so this is correct under
-    a `claude-experiment` clone as well as live — the mirror constant is hardwired
+    a `config-experiment` clone as well as live — the mirror constant is hardwired
     to `~/.claude`, which would otherwise compare a clone's registry against the
     live mirror and report drift for every not-yet-deployed marker.
     """

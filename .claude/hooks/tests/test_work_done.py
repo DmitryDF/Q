@@ -55,7 +55,7 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from unittest import mock
 
-# Respect CLAUDE_CONFIG_DIR so claude-experiment staging clones / config-source
+# Respect CLAUDE_CONFIG_DIR so config-experiment staging clones / config-source
 # worktrees test their OWN module copies (mirrors test_pre_plan_gates.py:27);
 # defaults to live ~/.claude when the env var is unset (behavior unchanged).
 HOOKS = Path(os.environ.get("CLAUDE_CONFIG_DIR", str(Path.home() / ".claude"))) / "hooks"

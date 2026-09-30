@@ -660,12 +660,12 @@ def test_cli_pass_line_names_both_mirrors_it_compared():
 
 def test_claude_verify_surfaces_an_uncompared_mirror_without_verbose():
     """The registered surface must show the skip with NO --verbose flag."""
-    verify = HOOKS.parent / "bin" / "claude-verify"
+    verify = HOOKS.parent / "bin" / "config-verify"
     text = verify.read_text(encoding="utf-8")
     block = text[text.index("4d."):]
     block = block[:block.index("\nfi\n") + 4]
     assert "NOT COMPARED:" in block, (
-        "claude-verify does not test for an uncompared mirror")
+        "config-verify does not test for an uncompared mirror")
     assert "vlog" not in block.split("NOT COMPARED:")[1].split("else")[0], (
         "the uncompared-mirror notice is routed through vlog, which prints only under "
         "--verbose — the surface that runs this does not pass it")
@@ -700,10 +700,10 @@ def test_wrapper_script_is_executable_and_passes():
 def test_guard_is_registered_in_claude_verify():
     """'Registered, not merely present' — A5's headline guard rail. A guard nothing
     invokes is a guard that never runs, so this asserts the registration itself."""
-    verify = HOOKS.parent / "bin" / "claude-verify"
+    verify = HOOKS.parent / "bin" / "config-verify"
     text = verify.read_text(encoding="utf-8")
     assert "check-citation-marker-drift" in text, (
-        "claude-verify does not invoke the citation-marker drift check — the guard "
+        "config-verify does not invoke the citation-marker drift check — the guard "
         "would be authored but never run")
 
 

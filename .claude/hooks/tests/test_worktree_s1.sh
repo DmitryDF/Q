@@ -22,7 +22,7 @@
 #   + A5 probe: bare-session → gate → place → in-worktree commit allowed (no loop)
 #
 # Resolves the modules under test from THIS file's location (works in a
-# claude-experiment clone and in live), so V1 runs against the same tree it ships in.
+# config-experiment clone and in live), so V1 runs against the same tree it ships in.
 
 set -uo pipefail
 

@@ -22,7 +22,7 @@
 #     Thoughts spines) — allowed without prompting;
 #   * any commit in the harness (config-source) PRIMARY clone — a promotion
 #     surface with no topic-worktree workflow — allowed structurally, retiring
-#     the claude-promote ALLOW_OUT_OF_TREE bridge.
+#     the config-promote ALLOW_OUT_OF_TREE bridge.
 # A MIXED commit (bookkeeping + domain) is NOT silently allowed — it falls
 # through to block-with-override with guidance to split it.
 #

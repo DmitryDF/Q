@@ -11,7 +11,7 @@ Execute the session close checklist.
 > **Orchestrator note (orchestrator-pattern — S7 full retrofit).** `/close`
 > conforms to `~/.claude/rules/orchestrator-pattern.md` + `~/.claude/rules/skill-authoring.md`:
 > it is the **orchestrator**. Deterministic acts stay as **code** (session-scope,
-> todo cleanup, metrics CLIs, archiving, git, claude-promote). **Production acts
+> todo cleanup, metrics CLIs, archiving, git, config-promote). **Production acts
 > are delegated** to right-sized adapters via the `Agent` tool, each gated by
 > `/double-check` with a one-tier-up fallback:
 >
@@ -547,7 +547,7 @@ Live `~/.claude/` is a **the deploy step target** (slice S1). Harness changes mu
 flow through the **promotion path** — staging (config source) → shared-repo PR →
 merge → the deploy step — never through the demoted `~/.claude/.git` repo (remote
 `config-source-remote-legacy`), which never reaches the `config-source-remote` shared repo. Slice S2
-built the `claude-promote` flow that does this in one gesture:
+built the `config-promote` flow that does this in one gesture:
 
 **Declare the scope here too.** Compile this session's own `~/.claude` paths and
 pass them, so the promotion commits your harness edits and not a concurrent
@@ -555,7 +555,7 @@ session's:
 
 ```bash
 SCOPE=$(${KIT_HOOKS_DIR}/session-scope.sh <SESSION_ID> <project_root> --harness-scope | tr '\n' ' ')
-~/.claude/bin/claude-promote -m "Session close: harness updates" --session-scope "$SCOPE"
+~/.claude/bin/config-promote -m "Session close: harness updates" --session-scope "$SCOPE"
 ```
 
 `--session-scope` and `--paths` feed one declared set and differ only in
@@ -566,16 +566,16 @@ transient trees like `plans/` and `logs/` are never offered for promotion.
 
 **When the list comes back empty, omit the flag entirely** rather than passing an
 empty string — an empty declaration is not the same as "publish everything", and
-`claude-promote` refuses a flag given without a value. A close that touched no
+`config-promote` refuses a flag given without a value. A close that touched no
 harness file should simply run the unflagged form, which then reports "nothing to
 promote".
 
-`claude-promote` leaves the capture step deliberately UNSCOPED and scopes only the
+`config-promote` leaves the capture step deliberately UNSCOPED and scopes only the
 git verbs. That inversion is intentional: scoping the capture would leave a
 concurrent session's live edits uncaptured in the source, and the later unscoped
 the deploy step would then prompt-or-overwrite them — destroying their work.
 Foreign edits are captured into the source working tree and left uncommitted,
-which keeps `claude-verify --phase post` and `claude-divergence-check` green while
+which keeps `config-verify --phase post` and `config-divergence-check` green while
 still not mis-attributing anything. Mis-attribution is prevented at the commit,
 not at the capture.
 
@@ -590,7 +590,7 @@ uncommitted on purpose because it belongs to whoever declared it.
 Guards:
 - **Exit 3** (`extra-safety` hold) is not an error — the PR is open awaiting an
   external approver; surface the PR URL and stop, do not retry.
-- If `claude-promote` is unavailable (pre-S2 harness) or fails, do **not** fall
+- If `config-promote` is unavailable (pre-S2 harness) or fails, do **not** fall
   back to committing to the demoted `~/.claude/.git` — that reopens the S2 gap.
   Report the failure and let the user run the promotion manually.
 - Never force-push; never push `main` directly — the flow honors the Branch

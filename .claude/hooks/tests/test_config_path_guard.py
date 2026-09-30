@@ -65,7 +65,7 @@ def main():
     # (e) marker present → exempt even a real config-path destructive
     check("marker present → rm -rf hooks EXEMPTED (allow)",
           not d(f"rm -rf {base}/hooks", marker=True)["block"])
-    # (d) NOT under claude-promote ancestry (no marker) → NOT exempted
+    # (d) NOT under config-promote ancestry (no marker) → NOT exempted
     check("no marker → rm -rf hooks NOT exempted (block)", d(f"rm -rf {base}/hooks")["block"])
 
     print("== module main() via stdin (portability: python runs on this OS) ==")

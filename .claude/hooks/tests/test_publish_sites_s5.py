@@ -176,7 +176,7 @@ def test_ninja_fix_prose_names_no_bare_commit():
 # /starter-kit step 6a
 #
 # S6 (A7b) rerouted this step: it no longer commits in the frozen ~/.claude repo
-# at all, but promotes the confirmed LIVE paths through `claude-promote --paths`,
+# at all, but promotes the confirmed LIVE paths through `config-promote --paths`,
 # whose scoping of both verbs is exercised end to end by
 # `test_promote_scope_s3.sh` (case 3b: a STAGED foreign file survives). What is
 # specific to THIS site, and therefore asserted here, is that the prose declares
@@ -192,9 +192,9 @@ def _kit_section_6a():
 
 def test_starter_kit_promotes_the_confirmed_list_through_claude_promote():
     sec = _kit_section_6a()
-    lines = [l.strip() for l in sec.splitlines() if "claude-promote" in l
-             and l.strip().startswith("~/.claude/bin/claude-promote")]
-    assert len(lines) == 1, f"expected ONE claude-promote command in 6a, got {lines}"
+    lines = [l.strip() for l in sec.splitlines() if "config-promote" in l
+             and l.strip().startswith("~/.claude/bin/config-promote")]
+    assert len(lines) == 1, f"expected ONE config-promote command in 6a, got {lines}"
     argv = shlex.split(lines[0])
     assert "--paths" in argv, argv
     declared = argv[argv.index("--paths") + 1]

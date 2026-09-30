@@ -167,7 +167,7 @@ class D3_FrozenHarnessRepoIsRefused(unittest.TestCase):
                     commit_scope.publish(["hooks/x.py"], "m", cwd=frozen)
             finally:
                 os.environ.pop("COMMIT_SCOPE_FROZEN_ROOT", None)
-            self.assertIn("claude-promote", str(cm.exception))
+            self.assertIn("config-promote", str(cm.exception))
             self.assertEqual(head, git(frozen, "rev-parse", "HEAD").stdout)
             self.assertEqual("", git(frozen, "diff", "--cached", "--name-only").stdout,
                              "the refusal must happen before anything is staged")
@@ -185,7 +185,7 @@ class D3_FrozenHarnessRepoIsRefused(unittest.TestCase):
 
     def test_ninja_fix_routes_harness_files_to_claude_promote(self):
         text = (CONFIG / "skills/ninja-fix/SKILL.md").read_text()
-        self.assertIn('~/.claude/bin/claude-promote -m "[ninja-fix] <one-sentence rationale>" '
+        self.assertIn('~/.claude/bin/config-promote -m "[ninja-fix] <one-sentence rationale>" '
                       '--paths "<the one ~/.claude file the Edit/Write call changed>"', text)
 
 

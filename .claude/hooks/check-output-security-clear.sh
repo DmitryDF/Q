@@ -40,7 +40,7 @@ case "$FILE_PATH" in
 esac
 
 # Tree-relative, for the same reason the sibling wrapper is: it makes the hook run against
-# whichever config tree contains it, so a claude-experiment clone exercises the clone.
+# whichever config tree contains it, so a config-experiment clone exercises the clone.
 HOOK_DIR="$(dirname "$0")"
 
 printf '%s' "$INPUT" | python3 "$HOOK_DIR/output_security_record.py" commit-staged

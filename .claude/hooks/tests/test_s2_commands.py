@@ -16,7 +16,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-# Respect CLAUDE_CONFIG_DIR so a claude-experiment clone tests ITS OWN hooks
+# Respect CLAUDE_CONFIG_DIR so a config-experiment clone tests ITS OWN hooks
 # (S1: this file used to hardcode live ~/.claude, so a clone's edits were never
 # the code under test here).
 HOOKS = Path(os.environ.get("CLAUDE_CONFIG_DIR", str(Path.home() / ".claude"))) / "hooks"

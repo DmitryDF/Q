@@ -51,7 +51,7 @@ def _guard_home():
 
 
 def marker_path(home):
-    return os.path.join(home, ".claude", "state", ".claude-promote-active")
+    return os.path.join(home, ".claude", "state", ".config-promote-active")
 
 
 def _protected_roots(home):
@@ -139,7 +139,7 @@ def decide(command, cwd, home, marker_exists):
     'target': str|None}. Never raises for ordinary input; callers still wrap it
     fail-open as defence in depth."""
     if marker_exists:
-        return {"block": False, "reason": "deploy-exempt (claude-promote marker present)",
+        return {"block": False, "reason": "deploy-exempt (config-promote marker present)",
                 "remediation": "", "target": None}
     prot_dirs, prot_files = _protected_roots(home)
     cwd = cwd or home
@@ -155,7 +155,7 @@ def decide(command, cwd, home, marker_exists):
                 "allowed).\n"
                 "This is a best-effort backstop, not the real guarantee (that is the "
                 "read-only tool grant). A legitimate deploy should run via "
-                "claude-promote (which sets the deploy-exempt marker)."
+                "config-promote (which sets the deploy-exempt marker)."
             )
             return {"block": True,
                     "reason": f"destructive command targets a safety-critical ~/.claude config path: {tgt}",

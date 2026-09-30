@@ -1284,7 +1284,7 @@ def test_a7_citation_vocabulary_landed_across_all_three_loci():
     assert para.antipattern == "checked", "matching every existing pair"
     # S8 NOTE — compare the engine against the mirror in ITS OWN tree. The mirror
     # constant is hardwired to `~/.claude/rules/...`, so under a
-    # `claude-experiment` clone this compared the CLONE's registry against the LIVE
+    # `config-experiment` clone this compared the CLONE's registry against the LIVE
     # mirror and reported drift for every marker the clone had added but not yet
     # deployed. That is an artifact of where the suite runs, not a real divergence,
     # and it would have made every clone-developed vocabulary change look broken.
@@ -1313,7 +1313,7 @@ def test_a7_citation_vocabulary_landed_across_all_three_loci():
 #
 # THE INVARIANT NO LONGER LIVES HERE. It lives in
 # `skills/research/kind_reachability.py`. A guard authored as a test is a guard
-# nothing runs: `claude-verify` has no test lane, and adding one would put a
+# nothing runs: `config-verify` has no test lane, and adding one would put a
 # `uv run --with pytest` NETWORK FETCH in the pre-bookend of every promotion. As a
 # module CLI the same guard is wired into the candidate deploy-check for the cost
 # of a ten-line shell block. The tests below EXERCISE that module; they do not
@@ -1469,7 +1469,7 @@ def test_reach_known_unreachable_entries_carry_a_reason_and_an_owner(monkeypatch
 def test_reach_every_registered_kind_has_a_production_driver():
     """THE INVARIANT, as the gate calls it. Checked in BOTH directions.
 
-    This is `kr.check()` — the same entry point `claude-verify` runs against a
+    This is `kr.check()` — the same entry point `config-verify` runs against a
     rendered candidate — so the suite and the gate cannot disagree about what the
     rule is. The green-run statement below is rendered from the module's data.
     """
@@ -1678,7 +1678,7 @@ def test_reach_missing_scope_record_fails_loudly_rather_than_skipping(tmp_path):
 
 
 def test_reach_cli_check_verb_exits_zero_on_live_and_names_the_module():
-    """The verb `claude-verify` calls, called the way it calls it."""
+    """The verb `config-verify` calls, called the way it calls it."""
     proc = subprocess.run(
         [sys.executable, str(KIND_REACHABILITY_PATH), "check"],
         capture_output=True, text=True)
@@ -1735,7 +1735,7 @@ def test_reach_control_the_kind_survives_the_gates_truncation_budget(monkeypatch
     """A2 — the message is designed against a MEASURED budget, not a guess.
 
     On the only path this runs, `land_port.py:963` keeps the first 400 characters
-    of AGGREGATE stderr from every check in `claude-verify`. A message that buries
+    of AGGREGATE stderr from every check in `config-verify`. A message that buries
     the kind name behind its rationale is a message nobody gets. The first
     element must name the kind inside 80 characters.
     """

@@ -51,7 +51,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-# Respect CLAUDE_CONFIG_DIR so a claude-experiment / merge-candidate clone tests
+# Respect CLAUDE_CONFIG_DIR so a config-experiment / merge-candidate clone tests
 # its OWN edited modules (S3-learned redirection), defaulting to live ~/.claude.
 HOOKS = Path(os.environ.get("CLAUDE_CONFIG_DIR", str(Path.home() / ".claude"))) / "hooks"
 sys.path.insert(0, str(HOOKS))
@@ -335,7 +335,7 @@ class CheckWorkDoneOmissionTests(unittest.TestCase):
         `work_done.LEDGER_DIR` and `work_done_journal.STATE_DIR` hardcode
         `Path.home()/".claude"`; this module resolves its base from
         `CLAUDE_CONFIG_DIR` first. They coincide by default and diverge under a
-        redirect — which is this codebase's own `claude-experiment` staging pattern,
+        redirect — which is this codebase's own `config-experiment` staging pattern,
         so the divergence is reachable in normal use rather than hypothetical.
 
         The divergence is intentional (it is what keeps a staging clone's reports

@@ -6,7 +6,7 @@ fence), A2 (engine skeleton + three declared seams), A3 (write-side envelope),
 A4 (code-owned wording constants), A5 (non-gating rules mirror), A6 (substrate-only).
 
 The suite is tree-relative: it runs against whichever config tree contains it, so the
-same file is the gate in a ``claude-experiment`` clone and in live ``~/.claude``.
+same file is the gate in a ``config-experiment`` clone and in live ``~/.claude``.
 """
 
 import json

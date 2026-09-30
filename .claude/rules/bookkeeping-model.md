@@ -191,7 +191,7 @@ worktrees `sparse-checkout`-exclude (S2/A3), and that the commit-gate allows on
 `${KIT_HOOKS_DIR}/bookkeeping-paths.json`. The table below is **generated** from
 that manifest (single-source + code-gen link); a drift-check
 (`python3 ${KIT_HOOKS_DIR}/bookkeeping_paths.py check-drift`, run automatically
-in `claude-verify --phase pre`) fails on any divergence. **Do NOT hand-edit the
+in `config-verify --phase pre`) fails on any divergence. **Do NOT hand-edit the
 block between the sentinels** — edit the manifest and regenerate:
 `python3 ${KIT_HOOKS_DIR}/bookkeeping_paths.py gen-prose --write`.
 

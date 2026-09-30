@@ -243,11 +243,11 @@ python3 ${KIT_HOOKS_DIR}/commit_scope.py publish --repo "<repo root containing t
 ```
 
 - **If the edited file is under `~/.claude/`, do NOT use `publish`.** `~/.claude/.git` is a frozen local snapshot (`git-policy.md` §2) and `publish` refuses it.
-  - If the file is in the **managed config scope** (`agents/`, `bin/`, `hooks/`, `rules/`, `skills/`, `CLAUDE.md`, `settings.json`), promote that one file — `claude-promote` scopes both verbs in the config source and runs the PR → merge → apply flow:
+  - If the file is in the **managed config scope** (`agents/`, `bin/`, `hooks/`, `rules/`, `skills/`, `CLAUDE.md`, `settings.json`), promote that one file — `config-promote` scopes both verbs in the config source and runs the PR → merge → apply flow:
     ```bash
-    ~/.claude/bin/claude-promote -m "[ninja-fix] <one-sentence rationale>" --paths "<the one ~/.claude file the Edit/Write call changed>"
+    ~/.claude/bin/config-promote -m "[ninja-fix] <one-sentence rationale>" --paths "<the one ~/.claude file the Edit/Write call changed>"
     ```
-  - Anything else under `~/.claude/` (`plans/`, `state/`, `logs/`, `projects/` …) is session state, not publishable config. Do not promote it: `claude-promote` would `config-source add` it into the shared repo. Report the edit as applied and unpublished.
+  - Anything else under `~/.claude/` (`plans/`, `state/`, `logs/`, `projects/` …) is session state, not publishable config. Do not promote it: `config-promote` would `config-source add` it into the shared repo. Report the edit as applied and unpublished.
 - The declared path is repo-root-relative (or absolute inside that repo). Never declare a directory, a glob, or more than the edited file — the diary line is `/close`'s to publish, not this commit's.
 - On the override path (c), put `pnv_bypass: true` in the message body: pass `-m` a quoted value whose subject line is `[ninja-fix] <rationale>`, followed by a blank line, then `pnv_bypass: true`.
 - **If the publish is refused with `commit is outside any topic worktree`, that is expected on this skill's default path — re-run it once with `ALLOW_OUT_OF_TREE=1` prefixed, paths still declared.** Step 0 states `/ninja-fix` does NOT auto-place, so a project-side fix runs in the primary checkout, which the commit-chokepoint gate (`check-worktree-commit-gate.sh`) refuses for a domain file. A single-surface fix is the case that override exists for — the gate's own guidance is "if this commit is legitimately out-of-tree, opt in explicitly for THIS commit only, and still name its paths". Do **not** reach for `/work-start --worktree` to get around it: that migrates the whole working tree for a one-line fix. Do **not** set `ALLOW_UNSCOPED_COMMIT=1` — it is a different variable, it is not what the gate asked for, and the declared scope must hold.
@@ -276,7 +276,7 @@ After either correction cycle, if the validator still returns DIRTY and the user
 
 The skill produces no JSON output. Its observable effects are exactly one of:
 
-- A single git commit with message prefix `[ninja-fix]` containing exactly the one edited file (PASS path or override path) — published via `commit_scope.py publish`, or via `claude-promote --paths` for a managed-scope `~/.claude` file. A `~/.claude` session-state edit is applied but not published.
+- A single git commit with message prefix `[ninja-fix]` containing exactly the one edited file (PASS path or override path) — published via `commit_scope.py publish`, or via `config-promote --paths` for a managed-scope `~/.claude` file. A `~/.claude` session-state edit is applied but not published.
 - A DIRTY summary message + no edit applied (correction-cycle exhausted or user-aborted).
 - An ESCALATE summary message + no edit applied.
 

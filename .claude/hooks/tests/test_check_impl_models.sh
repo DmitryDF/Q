@@ -15,7 +15,7 @@
 
 set -u
 
-HOOK="${CLAUDE_CONFIG_DIR:-$HOME/.claude}/hooks/check-impl-models.sh"   # capture before HOME override (respects CLAUDE_CONFIG_DIR for claude-experiment staging)
+HOOK="${CLAUDE_CONFIG_DIR:-$HOME/.claude}/hooks/check-impl-models.sh"   # capture before HOME override (respects CLAUDE_CONFIG_DIR for config-experiment staging)
 TMP_ROOT=$(mktemp -d -t impl-models-test-XXXXXX)
 FAKE_HOME="$TMP_ROOT/home"
 PASS=0

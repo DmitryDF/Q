@@ -282,14 +282,28 @@ def test_register_failure_is_reported_not_swallowed(tmp_path, monkeypatch):
     assert "c. [stated — https://x]" in rf.read_text(encoding="utf-8")
 
 
-def test_evidence_register_ensure_exists_does_not_truncate_a_pre_existing_register(tmp_path):
+def test_evidence_register_ensure_exists_does_not_truncate_a_pre_existing_register(tmp_path, monkeypatch):
     """MINOR 10 (round 2): `EvidenceRegister.ensure_exists` was check-then-
     `write_text` — non-atomic and TRUNCATING: two concurrent first-callers
     could both pass the `exists()` check, and the second's `write_text` would
-    silently discard whatever the first had already appended. Pre-create the
-    register with a row, then call `ensure_exists()` on a FRESH instance
-    pointed at the same path — the row must survive. Catches: reverting to
-    `if path.exists(): return False` followed by a plain `write_text`."""
+    silently discard whatever the first had already appended.
+
+    FIXER item 5 (round 3): pre-creating the register and then calling
+    `ensure_exists()` — the round-2 shape of this test — did NOT actually
+    exercise a race: the file already existed BEFORE any check ran, so a
+    reverted `if self._path.exists(): return False` would also correctly see
+    it and bail, same as the exclusive-open version does. Reproduced the
+    actual race the DS7 twin
+    (`test_bookkeeping_ds7.py::test_ensure_exists_never_truncates_an_existing_row`)
+    forces instead: `Path.exists` is monkeypatched to report the register
+    ABSENT while a row already sits on disk. The current exclusive-
+    `open(path, "x", ...)` implementation never calls `Path.exists` at all,
+    so the lie changes nothing for it and the row survives. A REVERTED
+    `if self._path.exists(): return False` followed by `open(path, "w", ...)`
+    would believe the lie, skip its own guard, and TRUNCATE the pre-existing
+    row instead. Catches: reverting `EvidenceRegister.ensure_exists` to
+    check-then-write."""
+    import _claim_register as cr
     from _claim_register import EvidenceRegister
     path = tmp_path / "evreg_CLAIMS.md"
     path.write_text(
@@ -297,6 +311,7 @@ def test_evidence_register_ensure_exists_does_not_truncate_a_pre_existing_regist
         "## Research Claims\n"
         "| C-0001 | x_RESEARCH.md:3 | en | no | true | unverified | thought |\n",
         encoding="utf-8")
+    monkeypatch.setattr(cr.Path, "exists", lambda self: False)
     created = EvidenceRegister(path, "evreg").ensure_exists()
     assert created is False
     assert "C-0001" in path.read_text(encoding="utf-8")
@@ -541,6 +556,92 @@ def test_claim_ledger_texts_for_source_excludes_retracted_claims(tmp_path):
     assert ledger.texts_for_source(str(rf)) == set()
 
 
+def test_claim_ledger_texts_for_source_includes_a_verified_claim_with_no_new_anchor(tmp_path):
+    """FIXER item 11 (round 3): `record_verified` appends an event carrying
+    `status`/`text` but NO `anchor` key at all (only `record_extracted` and
+    `record_revised`, via `Claim.to_record()`, carry one). Folding a single
+    "latest event wins" view for BOTH the anchor and the status/text meant a
+    claim whose LATEST event was `verified` had no anchor to read — it
+    silently dropped out of the set even though it was still `active`,
+    letting the harvest re-lift a claim this ledger already held. Catches:
+    reverting `texts_for_source` to one shared latest-event fold for both the
+    anchor and the status/text."""
+    from _claim_engine import Anchor, Claim, ClaimFlags, ClaimRole, CRITERIA
+    from _claim_ledger import ClaimLedger
+
+    rf = tmp_path / "verified_RESEARCH.md"
+    ledger = ClaimLedger(tmp_path / "verified.claims.ledger.jsonl")
+    flags = ClaimFlags.from_dict({c: True for c in CRITERIA})
+    claim = Claim(text="A verified fact.", anchor=Anchor.local_file(str(rf), 4),
+                  flags=flags, role=ClaimRole.BACKWARD, lang="en")
+    cid = ledger.record_extracted(claim, checked_at="t0")
+    ledger.record_verified(cid, verdict="PASS", checked_at="t1")
+    assert ledger.texts_for_source(str(rf)) == {"A verified fact."}
+
+
+def test_claim_ledger_texts_for_source_uses_the_revised_claims_new_text(tmp_path):
+    """FIXER item 11 (round 3): a revised claim's TEXT must be the one in the
+    dedup set. `record_revised` carries its own anchor (via
+    `Claim.to_record()`), so the revision is both the latest event overall
+    AND the latest anchor-carrying one — the old text must not linger in the
+    set alongside, or instead of, the new one."""
+    from _claim_engine import Anchor, Claim, ClaimFlags, ClaimRole, CRITERIA
+    from _claim_ledger import ClaimLedger
+
+    rf = tmp_path / "revised_RESEARCH.md"
+    ledger = ClaimLedger(tmp_path / "revised.claims.ledger.jsonl")
+    flags = ClaimFlags.from_dict({c: True for c in CRITERIA})
+    original = Claim(text="Original wording.", anchor=Anchor.local_file(str(rf), 2),
+                     flags=flags, role=ClaimRole.BACKWARD, lang="en")
+    cid = ledger.record_extracted(original, checked_at="t0")
+    revised = Claim(text="Revised wording.", anchor=Anchor.local_file(str(rf), 2),
+                    flags=flags, role=ClaimRole.BACKWARD, lang="en")
+    ledger.record_revised(cid, revised, checked_at="t1")
+    assert ledger.texts_for_source(str(rf)) == {"Revised wording."}
+
+
+# ── FIXER item 1: known limit L1, pinned rather than fixed ───────────────────
+
+def test_content_dedup_can_miss_a_multi_sentence_claim_known_limit_l1(tmp_path):
+    """Known limit L1 (see the `## Known limits` comment above
+    `FINDING_MARKERS` and `SKILL.md`'s `## Claims Registry` section) — pinned
+    here rather than fixed, per the operator's round-3 narrowing of this
+    slice against any redesign of the dedup mechanism.
+
+    The ledger's `texts_for_source` holds the recorder's FULL claim text
+    verbatim. The verified-harvest's `_claim_harvest.extract_marked_claims`
+    re-extracts a claim from the FILE by its own separate rule
+    (`_last_sentence`: the last sentence before the marker, split on
+    sentence-ending punctuation, stripped of markdown noise) — it does not
+    read what the recorder stored. For a claim containing an abbreviation
+    followed by a space ("Inc. "), the two disagree: "Acme Inc." reads as a
+    sentence boundary to `_last_sentence`, so it re-extracts only the tail
+    after it. This test PINS that mismatch. If a future fix reconciles the
+    two extraction rules, this test should show up as one to UPDATE — not as
+    one silently deleted."""
+    import _claim_harvest as ch
+    from _claim_harvest_trigger import _topic_paths
+    from _claim_ledger import ClaimLedger
+
+    claim_text = "Acme Inc. reported revenue of $5M in 2025."
+    rf = tmp_path / "l1_RESEARCH.md"
+    _intake(rf)
+    out = rp.record_finding(SID, {"claim": claim_text, "source": "https://x.example"})
+    assert out["ok"], out
+
+    paths = _topic_paths(rf)
+    ledger = ClaimLedger(paths["ledger"])
+    assert claim_text in ledger.texts_for_source(str(rf))
+
+    text = rf.read_text(encoding="utf-8")
+    marked = ch.extract_marked_claims(text)
+    harvested_texts = {it["text"] for it in marked["stated"]}
+    assert claim_text not in harvested_texts, (
+        "the harvest's re-extraction now agrees with the ledger's stored "
+        "text — if a fix reconciled the two extraction rules, UPDATE this "
+        "pin (and Known limit L1) rather than deleting it silently")
+
+
 # ── MAJOR 3: a finding lands at the end of the LAST Findings section ─────────
 
 def test_finding_recorded_after_insecure_sources_section_lands_inside_findings(tmp_path):
@@ -612,6 +713,44 @@ def test_finding_lands_after_a_fenced_heading_shaped_line_inside_findings(tmp_pa
     text = rf.read_text(encoding="utf-8")
     fence_idx = text.index("```\n## This looks like a heading")
     finding_idx = text.index("Landed after the fence.")
+    assert finding_idx > fence_idx
+
+
+def test_unclosed_fence_falls_back_to_pre_round_2_heading_scan(tmp_path):
+    """FIXER item 6 (round 3): an unclosed ``` fence must NOT be read as
+    swallowing the rest of the file — the scan falls back to the pre-round-2
+    unfenced `## ` search once end-of-file is reached still inside an open
+    fence, so a finding lands before a later dated Synthesis heading rather
+    than after it. Catches: treating an unclosed fence as staying open
+    through the rest of the text."""
+    rf = tmp_path / "unclosedfence_RESEARCH.md"
+    _intake(rf)
+    with open(rf, "a", encoding="utf-8") as fh:
+        fh.write("\n```\nunclosed fence, no closing delimiter\n")
+        fh.write("\n## 2026-09-29 — Synthesis\n\nEarlier synthesis text.\n")
+    out = rp.record_finding(SID, {"claim": "Landed despite the unclosed fence.",
+                                  "source": "https://x.example"})
+    assert out["ok"], out
+    text = rf.read_text(encoding="utf-8")
+    assert text.index("Landed despite the unclosed fence.") < \
+        text.index("## 2026-09-29 — Synthesis")
+
+
+def test_tilde_fenced_heading_shaped_line_is_skipped_like_backtick(tmp_path):
+    """FIXER item 6 (round 3): a `~~~`-delimited fence is tracked as its OWN
+    delimiter type — closed only by `~~~`, never by ``` — so a '## '-shaped
+    line inside it must not be read as the section boundary, matching the
+    existing backtick-fence behaviour."""
+    rf = tmp_path / "tildefence_RESEARCH.md"
+    _intake(rf)
+    with open(rf, "a", encoding="utf-8") as fh:
+        fh.write("\n~~~\n## This also looks like a heading but is quoted\n~~~\n")
+    out = rp.record_finding(SID, {"claim": "Landed after the tilde fence.",
+                                  "source": "https://x.example"})
+    assert out["ok"], out
+    text = rf.read_text(encoding="utf-8")
+    fence_idx = text.index("~~~\n## This also looks like a heading")
+    finding_idx = text.index("Landed after the tilde fence.")
     assert finding_idx > fence_idx
 
 
@@ -802,6 +941,28 @@ def test_record_finding_refuses_when_a_symlink_is_planted_after_intake(tmp_path)
     _intake(rf)
     rf.unlink()
     rf.symlink_to(other)
+    with pytest.raises(ValueError, match="resolves through a symlink"):
+        rp.record_finding(SID, {"claim": "c", "source": "https://x"})
+
+
+def test_record_finding_refuses_when_the_parent_directory_becomes_a_symlink(tmp_path):
+    """U5 (untested mutation, now covered): dropping `or os.path.realpath(
+    canonical) != canonical` from the record-time re-check would leave THIS
+    vector open. The canonical path's own FINAL COMPONENT is never a symlink
+    here — only an ANCESTOR directory is swapped for one, after approval —
+    so `os.path.lexists(canonical) and os.path.islink(canonical)` alone does
+    not see it (the file's own name is never lstat'd as a link). Only the
+    `os.path.realpath(canonical) != canonical` half catches an ancestor
+    swap. Catches: dropping that half of the record-time symlink re-check."""
+    real_dir = tmp_path / "dirA"
+    real_dir.mkdir()
+    rf = real_dir / "x_RESEARCH.md"
+    _intake(rf)
+    renamed = tmp_path / "dirA_real"
+    real_dir.rename(renamed)
+    elsewhere = tmp_path / "dirB"
+    elsewhere.mkdir()
+    real_dir.symlink_to(elsewhere, target_is_directory=True)
     with pytest.raises(ValueError, match="resolves through a symlink"):
         rp.record_finding(SID, {"claim": "c", "source": "https://x"})
 
@@ -1102,8 +1263,17 @@ def test_record_finding_shares_the_engine_lock_on_the_research_file(tmp_path):
     takes — not a second, independent lock keyed some other way. Holding the
     engine's own lock on another thread must block `record_finding` until it
     is released; a differently-keyed lock would let `record_finding` proceed
-    immediately regardless. Catches: keying `_ResearchFileLock` on anything
-    other than `path.with_suffix(path.suffix + ".lock")`."""
+    immediately regardless.
+
+    FIXER item 10 (round 3): rewritten as an ORDERING assertion, not a
+    duration threshold — the round-2 version asserted `elapsed >=
+    HOLD_SECONDS - 0.3`, an absolute-duration comparison that is flaky under
+    any real difference in machine speed or load. This version asserts only
+    that `record_finding`'s return happens AFTER the holder released the
+    lock: true on any machine, at any speed, and false only if the recorder
+    did NOT actually block on the same sibling file. Catches: keying
+    `_ResearchFileLock` on anything other than
+    `path.with_suffix(path.suffix + ".lock")`."""
     import fcntl
     import threading
     import time
@@ -1112,33 +1282,30 @@ def test_record_finding_shares_the_engine_lock_on_the_research_file(tmp_path):
     _intake(rf)
     lockpath = Path(str(rf.resolve()) + ".lock")
 
-    HOLD_SECONDS = 1.2  # generous margin over any ordinary record_finding overhead
+    holder_has_lock = threading.Event()
+    release_time = {}
 
     def hold_engine_lock():
         with open(lockpath, "w") as fh:
             fcntl.flock(fh, fcntl.LOCK_EX)
-            time.sleep(HOLD_SECONDS)
+            holder_has_lock.set()
+            time.sleep(0.3)
+            release_time["t"] = time.monotonic()
             fcntl.flock(fh, fcntl.LOCK_UN)
 
     holder = threading.Thread(target=hold_engine_lock)
     holder.start()
-    time.sleep(0.1)  # let the holder acquire first
-    start = time.monotonic()
+    assert holder_has_lock.wait(timeout=10), "holder never acquired the lock"
+
     out = rp.record_finding(SID, {"claim": "c.", "source": "https://x"})
-    elapsed = time.monotonic() - start
+    return_time = time.monotonic()
     holder.join(timeout=10)
 
     assert out["ok"], out
-    # A DURATION threshold, not an absolute-time comparison: this isolates
-    # "did THIS call block for close to the full hold", independent of
-    # whatever ordinary overhead record_finding has on its own. Blocked:
-    # elapsed is close to HOLD_SECONDS minus the 0.1s head start (~1.1s).
-    # Not blocked (a differently-keyed lock): elapsed is the call's own
-    # ordinary overhead, a small fraction of a second.
-    assert elapsed >= HOLD_SECONDS - 0.3, (
-        "record_finding did not block for close to the full hold ({e:.2f}s "
-        "elapsed, expected close to {h}s) — it is not locking the same "
-        "sibling file the engine locks".format(e=elapsed, h=HOLD_SECONDS))
+    assert "t" in release_time, "the holder thread never recorded a release time"
+    assert return_time > release_time["t"], (
+        "record_finding returned before the holder released the lock — it "
+        "is not blocking on the same sibling file the engine locks")
 
 
 # ── untested mutation: the REGISTER lock (MAJOR 4b) ──────────────────────────
@@ -1152,7 +1319,14 @@ def test_two_research_files_sharing_one_register_both_land_concurrently(tmp_path
 
     The register's own append (`_claim_register.EvidenceRegister.add`,
     `open(path, "a", ...)`) is slowed on purpose so the two calls genuinely
-    overlap in time."""
+    overlap in time.
+
+    NOTE (FIXER item U1, untested mutation): this test does NOT distinguish
+    "the `_FindingsLock` register lock does real work" from "the ledger's own
+    `_id_lock` already serialized the two writers' id allocation, and that
+    alone was enough" — both rows land either way. `_FindingsLock` itself is
+    likely redundant for that reason; no test here isolates it (see
+    `_FindingsLock`'s own docstring)."""
     import builtins
     import claims_registry as cr
     import threading
@@ -1195,6 +1369,25 @@ def test_two_research_files_sharing_one_register_both_land_concurrently(tmp_path
     rows = _register_rows(register_path)
     assert len(rows) == 2
     assert {r["cid"] for r in rows} == {results["a"]["claim_id"], results["b"]["claim_id"]}
+
+
+# ── FIXER item 7: the addendum tells checkers not to assess _CLAIMS.md ──────
+
+def test_factcheck_research_addendum_tells_checkers_not_to_assess_claims_md():
+    """FIXER item 7: pins the `_claims_addendum` string
+    `pre_plan_gates.py`'s `factcheck-research` CLI passes as `scope_addendum`
+    to `factcheck_run` (MAJOR 4, round 2) — a checker cannot verify a
+    `_CLAIMS.md` row at all, since every row is code-written with only a
+    claim id and a `<file>:<line>` locator; the claim TEXT lives in the
+    ledger, not the register. Reads the source directly rather than driving
+    the full CLI (which needs a live checker dispatch this test suite does
+    not set up) — a stable-phrase pin, so a revert of the addendum wording is
+    caught. See the comment above `_claims_addendum` in `pre_plan_gates.py`
+    for the separate, NOT-S6, note that
+    `~/repos/Projects/.claude/rules/claims-registry.md` still
+    describes the retired hand-written format this addendum supersedes."""
+    text = (HOOKS_DIR / "pre_plan_gates.py").read_text(encoding="utf-8")
+    assert "Do not assess any _CLAIMS.md file alongside the research" in text
 
 
 # ── finding 17: the engine creates the register before its topic raise ──────

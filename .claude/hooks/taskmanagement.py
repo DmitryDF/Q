@@ -73,7 +73,7 @@ from typing import Any
 # ---------------------------------------------------------------------------
 
 # Locks are MACHINE state shared by every session and every config tree (a
-# clone spawned by `claude-experiment` must see the same holders live sees), so
+# clone spawned by `config-experiment` must see the same holders live sees), so
 # the directory is under $HOME, not under CLAUDE_CONFIG_DIR. `TM_LOCKS_DIR` is
 # the test seam that lets the three S4 hook scripts be exercised as real
 # subprocesses against a sandbox instead of the live directory.

@@ -10,7 +10,7 @@ real deadline.
 
 Imports the `todo.py` that lives ALONGSIDE this test (its own hooks dir), NOT a
 hardcoded ~/.claude path — so it validates whichever tree it runs in (a
-claude-experiment clone during development, live after promotion).
+config-experiment clone during development, live after promotion).
 
 Run: python3 -m pytest <hooks>/tests/test_todo_due_date.py -v
 """

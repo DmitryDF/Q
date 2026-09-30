@@ -1,7 +1,7 @@
 """Which registered research source kinds have a production driver.
 
 WHY THIS IS A MODULE AND NOT A TEST. The invariant below shipped first inside
-`hooks/tests/test_source_admission_port.py`, where nothing ran it: `claude-verify`
+`hooks/tests/test_source_admission_port.py`, where nothing ran it: `config-verify`
 — the canonical pre-ship check (`land_port.py:64-67`) — runs CLI-verb checks and
 zero tests, and the only working pytest invocation under `~/.claude` is
 `uv run --with pytest`, which would put a network fetch in the pre-bookend of
@@ -78,7 +78,7 @@ from typing import Dict, Iterable, List, Mapping, Optional, Sequence, Set, Tuple
 #: driver (`skills/research/declared_read.py`). That entry was deleted in the
 #: driver's own commit rather than as a follow-up: `check()` below fails with
 #: "NOW DRIVEN — its exemption is stale" the moment a driver exists, and among the
-#: gates that run AUTOMATICALLY it runs only on the deploy path (`claude-verify`
+#: gates that run AUTOMATICALLY it runs only on the deploy path (`config-verify`
 #: has no test lane), so a split commit clears everything that fires on its own and
 #: then fails at promotion. `hooks/tests/test_code_admission.py` asserts it too,
 #: but only for whoever runs that suite.
@@ -436,7 +436,7 @@ def _cmd_check(args) -> int:
             print(line, file=sys.stderr)
         return 1
     # Silent on the gated path by construction: the deploy-check captures and
-    # discards stdout on green (`claude-verify` vlogs it, `land_port.py:967-984`
+    # discards stdout on green (`config-verify` vlogs it, `land_port.py:967-984`
     # drops it). The affirmative form is here for a by-hand run, and in the suite.
     print(unreachable_statement(root))
     return 0

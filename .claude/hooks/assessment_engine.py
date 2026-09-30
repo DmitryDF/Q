@@ -1976,7 +1976,7 @@ def resolve_assessment_input(
 #
 # HARD constraint (documented platform exception / git-policy §2): `claude --print`
 # FAILS inside an active Claude Code session, so these adapters run ONLY out-of-session
-# (a `claude-experiment` clone / fresh shell). In-session, the /assess façade drives the
+# (a `config-experiment` clone / fresh shell). In-session, the /assess façade drives the
 # judge + V2 dispatches through the Agent tool via the `judge-prompt` / `v2-convergence`
 # seams instead. Every model/subprocess boundary here is an injected Callable, so the
 # wiring is unit-tested with fakes; the real-model behaviour is validated by the

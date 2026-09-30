@@ -142,7 +142,7 @@ fi
 # is unquoted-without-spaces or a quoted string, followed by optional spaces and
 # then ";" or end-of-line — exists only so a later "$VAR" can reference it.
 # An env-var PREFIX (VAR=value command, space-separated) is a different, legitimate
-# form (ALLOW_OUT_OF_TREE=1 git …, VERIFY_THEN_LAND_SKIP=1 claude-promote …) and is
+# form (ALLOW_OUT_OF_TREE=1 git …, VERIFY_THEN_LAND_SKIP=1 config-promote …) and is
 # NOT matched. Same '$(cat <<' exception as P3/P8/P9 so commit-message bodies
 # containing KEY=value lines are not caught.
 # Form A: tilde in an assignment value — bash may expand at assignment time.

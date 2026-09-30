@@ -126,7 +126,7 @@ def test_capture_unbound_only_beside_an_unscoped_commit():
         res = pss.scan(Path(d))
         assert res["ok"] and any(f["rule"] == "capture-unbound" for f in res["allowed"]), res
     # One scoped commit does not excuse the capture if ANOTHER commit in the same
-    # file is unscoped — the pre-S3 claude-promote shape had both kinds of line.
+    # file is unscoped — the pre-S3 config-promote shape had both kinds of line.
     mixed = good + "git -C \"$S\" commit -m \"$M\"\n"
     with _root({"bin/p": mixed}) as d:
         rules = sorted(f["rule"] for f in pss.scan(Path(d))["findings"])
@@ -160,7 +160,7 @@ def test_tests_fixtures_and_backups_are_excluded():
 
 def test_allowlist_requires_its_condition_and_a_reason():
     promote_old = "#!/usr/bin/env bash\ngit -C \"$S\" add -A || die\ngit -C \"$S\" commit -m \"$MSG\" || die\n"
-    with _root({"bin/claude-promote": promote_old}) as d:
+    with _root({"bin/config-promote": promote_old}) as d:
         rules = sorted(f["rule"] for f in pss.scan(Path(d))["findings"])
         # the SAME statements the live allowlist excuses — flagged, because the
         # override arm that justifies the exemption is not in this file
@@ -215,8 +215,8 @@ SEVEN_SITES = {
     "ninja-fix/SKILL.md:254 (prose, names no command)": ("skills/ninja-fix/SKILL.md", "prose-no-command"),
     "execute-plan/run.py:1334 (add -A, bare commit)": ("skills/execute-plan/run.py", "whole-tree-add"),
     "execute-plan/run.py:1370-1376 (scoped add, bare commit)": ("skills/execute-plan/run.py", "unscoped-commit"),
-    "claude-promote:174 (bare the capture step)": ("bin/claude-promote", "capture-unbound"),
-    "claude-promote:223-229 (add -A, bare commit)": ("bin/claude-promote", "unscoped-commit"),
+    "config-promote:174 (bare the capture step)": ("bin/config-promote", "capture-unbound"),
+    "config-promote:223-229 (add -A, bare commit)": ("bin/config-promote", "unscoped-commit"),
     "starter-kit/SKILL.md:157-158 (scoped add, bare commit)": ("skills/starter-kit/SKILL.md", "unscoped-commit"),
 }
 
@@ -256,13 +256,13 @@ def test_wrapper_exit_codes():
 
 
 # The managed scope plus `docs/`, which check_land_port_records reads — without
-# it the CLEAN copy already fails claude-verify, and the regressed case would be
+# it the CLEAN copy already fails config-verify, and the regressed case would be
 # vacuous (it would fail for a reason unrelated to publish scope).
 MANAGED_SCOPE = ("agents", "bin", "CLAUDE.md", "docs", "hooks", "rules", "settings.json", "skills")
 
 
 def test_claude_verify_pre_refuses_a_regressed_surface():
-    """The wiring, not just the module: `claude-verify --phase pre` over a copy of
+    """The wiring, not just the module: `config-verify --phase pre` over a copy of
     this config root passes, and fails naming the site once one converted
     surface regresses to a bare commit. Every other check sees an identical tree,
     so the failure is attributable to the publish-scope block."""
@@ -276,7 +276,7 @@ def test_claude_verify_pre_refuses_a_regressed_surface():
                 if r.returncode != 0:
                     subprocess.run(["cp", "-R", str(src), str(copy / name)], check=True)
         env = dict(os.environ, CLAUDE_VERIFY_TARGET=str(copy), CLAUDE_CONFIG_DIR=str(copy))
-        verify = [ "bash", str(copy / "bin/claude-verify"), "--phase", "pre"]
+        verify = [ "bash", str(copy / "bin/config-verify"), "--phase", "pre"]
         clean = subprocess.run(verify, capture_output=True, text=True, env=env)
         assert clean.returncode == 0, (clean.stdout + clean.stderr)[-1500:]
 

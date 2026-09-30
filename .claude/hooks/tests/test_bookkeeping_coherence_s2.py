@@ -17,7 +17,7 @@ Covers the six V1 observables:
   4. Manifest single source + drift-checked — divergence fails the drift-check,
      regen passes; A3 exclusion + A5 allow-set both derive from the manifest.
   5. Structural bookkeeping-commit allow — bookkeeping-only allowed, mixed
-     blocked, a claude-promote-style harness commit allowed (bridge removed).
+     blocked, a config-promote-style harness commit allowed (bridge removed).
   6. Lock boundary — crash mid-hold releases the lock (OS-released); the
      primitive holds no network I/O; no blanket `--no-verify` was introduced.
 
@@ -308,7 +308,7 @@ def run(tmp: Path) -> None:
           r.stderr.strip()[:80])
     r = commit_attempt("harness promote, declared", _harness, env_extra=env_h,
                        paths=["src/infra.py"])
-    check("5c' DECLARED claude-promote-style harness commit: ALLOWED (bridge removed)",
+    check("5c' DECLARED config-promote-style harness commit: ALLOWED (bridge removed)",
           r.returncode == 0 and head() != h0, r.stderr.strip()[:80])
 
     # 5d — declared-publish-scope S2/A3. A SCOPED bookkeeping commit is allowed.

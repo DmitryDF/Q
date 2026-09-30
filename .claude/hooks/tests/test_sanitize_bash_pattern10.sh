@@ -5,7 +5,7 @@
 # prefix (VAR=value command) is not a preamble and must never be blocked.
 #
 # Override the hook under test with SANITIZE_HOOK=/path/to/sanitize-bash.sh
-# (used to exercise a claude-experiment clone before promotion).
+# (used to exercise a config-experiment clone before promotion).
 
 set -u
 
@@ -79,7 +79,7 @@ probe "env prefix: CLAUDE_CONFIG_DIR + bash" \
   'CLAUDE_CONFIG_DIR=~/.claude-staging bash /tmp/run.sh' 0 ""
 
 probe "env prefix: verify-then-land override" \
-  'VERIFY_THEN_LAND_SKIP=1 claude-promote --emergency-skip' 0 ""
+  'VERIFY_THEN_LAND_SKIP=1 config-promote --emergency-skip' 0 ""
 
 # ---- MUST NOT BLOCK: ordinary commands -------------------------------------
 probe "plain absolute-path invocation" \
