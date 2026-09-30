@@ -1,0 +1,77 @@
+{
+  "_comment": "Fixture: 1 candidate with a locked-field conflict assumption — exercises Step 7b re-clarification gate category (iii). The candidate's assumption contradicts the locked Desired Solution field. eval.py validates schema normally; the skill's Step 7b logic surfaces the conflict to the user.",
+  "discovery_src_hash": "c3d4e5f6a1b2",
+  "desired_outcome": "A hiring manager can see a ranked list of candidates for a role, where each candidate is scored against the role's required competencies, without leaving the existing HR portal.",
+  "prior_alternative_n": null,
+  "candidates": [
+    {
+      "candidate_id": "c1",
+      "model": "sonnet",
+      "design_context_override": "explore a synchronous step-by-step design with no background agents",
+      "b1_output": {
+        "agreed_solution_description": "A new scoring module embedded in the HR portal evaluates each candidate's CV against a competency matrix defined by the hiring manager. Scoring is done by Claude on-demand when the hiring manager opens a role's candidate list. Scores are cached per candidate per role for 7 days. The hiring manager sees a sorted table with score, top-3 matched competencies, and a quote from the CV grounding each match.",
+        "architecture_decisions": [
+          {
+            "area": "scoring trigger",
+            "choice": "On-demand synchronous scoring when the page is opened",
+            "rationale": "Avoids background job complexity. The hiring manager waits 10-30 seconds on first view; subsequent views use the 7-day cache.",
+            "discovery_anchor": "without leaving the existing HR portal"
+          },
+          {
+            "area": "competency matrix source",
+            "choice": "Hiring manager defines competencies via a form in the HR portal; stored as JSON in the portal DB",
+            "rationale": "Keeps all configuration inside the portal. No external spreadsheet imports needed.",
+            "discovery_anchor": "scored against the role's required competencies"
+          },
+          {
+            "area": "external AI vendor",
+            "choice": "Anthropic Claude API via a dedicated service account",
+            "rationale": "Assumes the organization is permitted to send CV data to an external AI vendor. This is a key assumption that must be confirmed with legal/compliance.",
+            "discovery_anchor": "ranked list of candidates for a role"
+          }
+        ],
+        "ux_decisions": [
+          {
+            "area": "result surface",
+            "choice": "Ranked table embedded in the existing role view",
+            "rationale": "Hiring manager stays inside the HR portal. No new window or tool.",
+            "discovery_anchor": "without leaving the existing HR portal"
+          }
+        ],
+        "cockburn_gate_results": {
+          "abstraction_test": {
+            "passed": true,
+            "reasoning": "Components: CompetencyMatrix, ScoringService, ScoreCache, CandidateRankingView. Names are role-clear."
+          },
+          "responsibility_alignment_test": {
+            "passed": true,
+            "reasoning": "ScoringService scores only. ScoreCache caches only. CandidateRankingView displays only. No cross-cutting."
+          },
+          "evolution_test": {
+            "notes": "If AI vendor changes, only ScoringService changes. If cache TTL policy changes, only ScoreCache changes."
+          },
+          "communications_patterns_test": {
+            "notes": "Portal → ScoringService → Claude API → ScoreCache → CandidateRankingView. One-way chain."
+          },
+          "data_connectedness_test": {
+            "notes": "ScoringService receives CV text and competency matrix. Has all it needs."
+          },
+          "data_variations_test": {
+            "notes": "No competencies defined → scoring disabled with guidance to define them first. Cache miss on first view → synchronous wait with spinner. External API timeout → cached fallback or error with retry option."
+          }
+        },
+        "confidence": "low",
+        "assumptions": [
+          "The organization is permitted by legal/compliance to send CV data to an external AI vendor (Anthropic). THIS IS A LOCKED-FIELD CONFLICT: the Desired Solution field specifies 'on-premise AI only' — this candidate assumes external vendor, which directly contradicts the locked constraint.",
+          "The 7-day cache TTL is acceptable for scoring freshness"
+        ],
+        "discovery_anchors": [
+          { "field": "desired_outcome", "excerpt": "without leaving the existing HR portal" },
+          { "field": "desired_outcome", "excerpt": "scored against the role's required competencies" },
+          { "field": "desired_solution", "excerpt": "on-premise AI only — no CV data leaves the organization network" }
+        ],
+        "model_used": "sonnet"
+      }
+    }
+  ]
+}

@@ -1,0 +1,129 @@
+{
+  "_comment": "Fixture: 2 candidates (1 Sonnet + 1 Opus), PASS on both post-verifications, first run. Exercises the happy-path end-to-end flow through Steps 1-11.",
+  "discovery_src_hash": "a1b2c3d4e5f6",
+  "desired_outcome": "A user who pastes a job description into the canvas system sees a structured BMC generated within 30 seconds, with all 9 blocks populated from the source text, and can export it as PDF.",
+  "prior_alternative_n": null,
+  "candidates": [
+    {
+      "candidate_id": "c1",
+      "model": "sonnet",
+      "design_context_override": "favor explicit user gates over implicit automation",
+      "b1_output": {
+        "agreed_solution_description": "A FastAPI backend accepts a job description text, passes it to Claude Sonnet for structured extraction, and returns a populated BMC JSON. The React frontend renders the 9 BMC blocks from the JSON and offers a one-click PDF export via the browser's print API. The user pastes text, clicks Generate, waits up to 30 seconds, reviews the draft, and exports — three explicit gates, no hidden automation.",
+        "architecture_decisions": [
+          {
+            "area": "extraction model",
+            "choice": "Claude Sonnet with structured output tool-use",
+            "rationale": "Sonnet balances cost and quality for the extraction task. Structured output guarantees the 9-block schema is always populated.",
+            "discovery_anchor": "canvas system sees a structured BMC generated within 30 seconds"
+          },
+          {
+            "area": "persistence",
+            "choice": "PostgreSQL with a sessions table; no user auth in v1",
+            "rationale": "Keeps state between Generate and Export without requiring a login flow. Sessions expire after 24 hours.",
+            "discovery_anchor": "A user who pastes a job description"
+          }
+        ],
+        "ux_decisions": [
+          {
+            "area": "entry surface",
+            "choice": "Single textarea with a Generate button",
+            "rationale": "Mirrors the user's mental model: paste text, click generate. No multi-step wizard.",
+            "discovery_anchor": "pastes a job description into the canvas system"
+          }
+        ],
+        "cockburn_gate_results": {
+          "abstraction_test": {
+            "passed": true,
+            "reasoning": "Components named by role: ExtractionService, BMCRenderer, SessionStore. Each name conveys what it does to a domain reader."
+          },
+          "responsibility_alignment_test": {
+            "passed": true,
+            "reasoning": "ExtractionService owns text-to-BMC transformation only. BMCRenderer owns display only. No cross-cutting responsibility leakage."
+          },
+          "evolution_test": {
+            "notes": "If the extraction model changes, only ExtractionService changes. If the BMC schema grows to 12 blocks, only BMCRenderer changes. Single-locus per change."
+          },
+          "communications_patterns_test": {
+            "notes": "One-way flow: frontend → backend → Claude API → backend → frontend. No cycles."
+          },
+          "data_connectedness_test": {
+            "notes": "Each component receives all data it needs from its upstream caller. No reaching out for state."
+          },
+          "data_variations_test": {
+            "notes": "Empty textarea → disabled Generate button. API timeout → user-visible error with retry. Partial BMC → rendered with empty block placeholders."
+          }
+        },
+        "confidence": "high",
+        "assumptions": [],
+        "discovery_anchors": [
+          { "field": "desired_outcome", "excerpt": "canvas system sees a structured BMC generated within 30 seconds" },
+          { "field": "desired_outcome", "excerpt": "all 9 blocks populated from the source text" },
+          { "field": "desired_solution", "excerpt": "export it as PDF" }
+        ],
+        "model_used": "sonnet"
+      }
+    },
+    {
+      "candidate_id": "c2",
+      "model": "opus",
+      "design_context_override": "optimize for fewest moving parts — minimize new abstractions",
+      "b1_output": {
+        "agreed_solution_description": "A single FastAPI endpoint receives the job description, calls Claude Opus for extraction, and returns the populated BMC. The React frontend renders the 9 blocks and offers PDF export. No session storage — the frontend holds state in memory for the duration of the browser tab. Minimal surface area: one endpoint, one model call, one render component.",
+        "architecture_decisions": [
+          {
+            "area": "extraction model",
+            "choice": "Claude Opus with tool-use structured output",
+            "rationale": "Opus is the most capable model for nuanced job-description parsing. The cost difference is acceptable at the expected usage volume.",
+            "discovery_anchor": "all 9 blocks populated from the source text"
+          },
+          {
+            "area": "persistence",
+            "choice": "No server-side persistence in v1 — frontend memory only",
+            "rationale": "Removes the sessions table, simplifies deployment, eliminates a failure mode. The user can re-generate if they close the tab.",
+            "discovery_anchor": "A user who pastes a job description into the canvas system"
+          }
+        ],
+        "ux_decisions": [
+          {
+            "area": "export",
+            "choice": "Browser print-to-PDF via window.print()",
+            "rationale": "Zero additional backend work. Native browser feature. Works offline after generation.",
+            "discovery_anchor": "export it as PDF"
+          }
+        ],
+        "cockburn_gate_results": {
+          "abstraction_test": {
+            "passed": true,
+            "reasoning": "Single endpoint and single render component — names ExtractionEndpoint and BMCView. Roles clear from names."
+          },
+          "responsibility_alignment_test": {
+            "passed": true,
+            "reasoning": "ExtractionEndpoint does extraction. BMCView does display and export. No overlap."
+          },
+          "evolution_test": {
+            "notes": "If extraction model changes, one endpoint changes. If export mechanism changes (e.g. server-side PDF), one frontend component changes."
+          },
+          "communications_patterns_test": {
+            "notes": "Frontend POSTs to endpoint, endpoint returns JSON. One round trip. No async messaging."
+          },
+          "data_connectedness_test": {
+            "notes": "Endpoint receives all it needs from the POST body. View receives all it needs from the response JSON."
+          },
+          "data_variations_test": {
+            "notes": "Empty input → validation error before API call. Timeout → error message. Partial extraction → rendered with explicit empty placeholders."
+          }
+        },
+        "confidence": "high",
+        "assumptions": [
+          "Usage volume is low enough that Opus cost is acceptable in v1"
+        ],
+        "discovery_anchors": [
+          { "field": "desired_outcome", "excerpt": "all 9 blocks populated from the source text" },
+          { "field": "desired_outcome", "excerpt": "canvas system sees a structured BMC generated within 30 seconds" }
+        ],
+        "model_used": "opus"
+      }
+    }
+  ]
+}

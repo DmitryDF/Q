@@ -1,0 +1,128 @@
+{
+  "_comment": "Fixture: 2 candidates, ESCALATE on final post-verify (Step 9). The input is valid; the assembled output has verification_metadata.final_output.double_check_verdict = 'ESCALATE'. eval.py exits 0 (schema valid — ESCALATE is a legal verdict) but the skill behavior stops at Step 9 without writing _thought. Use this fixture + a synthesized ESCALATE output to exercise the E7 path.",
+  "discovery_src_hash": "b2c3d4e5f6a1",
+  "desired_outcome": "A recruiter uploads a CV PDF and receives a structured skills matrix in under 60 seconds, with each skill tagged by proficiency level (beginner/intermediate/expert) and grounded in a quoted CV sentence.",
+  "prior_alternative_n": null,
+  "candidates": [
+    {
+      "candidate_id": "c1",
+      "model": "sonnet",
+      "design_context_override": "favor explicit user gates over implicit automation",
+      "b1_output": {
+        "agreed_solution_description": "A FastAPI service accepts a CV PDF, extracts text via pdfminer, passes the text to Claude for skills extraction with a structured tool schema (skill_name, proficiency_level, evidence_quote), and returns a JSON skills matrix. A React table renders the matrix grouped by proficiency tier.",
+        "architecture_decisions": [
+          {
+            "area": "PDF text extraction",
+            "choice": "pdfminer.six for server-side text extraction",
+            "rationale": "Deterministic, no external API calls, handles multi-column CVs.",
+            "discovery_anchor": "uploads a CV PDF"
+          },
+          {
+            "area": "proficiency classification",
+            "choice": "Claude tool-use with a three-level schema (beginner/intermediate/expert)",
+            "rationale": "The three levels match the recruiter's stated requirement. Structured output guarantees valid enum values.",
+            "discovery_anchor": "proficiency level (beginner/intermediate/expert)"
+          }
+        ],
+        "ux_decisions": [
+          {
+            "area": "upload surface",
+            "choice": "Drag-and-drop PDF upload with progress indicator",
+            "rationale": "Recruiter workflow is file-centric; drag-and-drop reduces friction vs. file-picker button.",
+            "discovery_anchor": "A recruiter uploads a CV PDF"
+          }
+        ],
+        "cockburn_gate_results": {
+          "abstraction_test": {
+            "passed": true,
+            "reasoning": "Components: PDFExtractor, SkillsClassifier, SkillsMatrixView. Names convey roles."
+          },
+          "responsibility_alignment_test": {
+            "passed": true,
+            "reasoning": "Each component owns one concern: text extraction, classification, display."
+          },
+          "evolution_test": {
+            "notes": "If PDF library changes, only PDFExtractor changes. If proficiency schema expands to 5 levels, only SkillsClassifier prompt changes."
+          },
+          "communications_patterns_test": {
+            "notes": "One-way: Upload → PDFExtractor → SkillsClassifier → SkillsMatrixView. No cycles."
+          },
+          "data_connectedness_test": {
+            "notes": "Each stage receives complete data from upstream."
+          },
+          "data_variations_test": {
+            "notes": "Non-PDF upload → rejected at upload gate. Empty CV → returned with empty skills matrix and a warning. PDF with no text (scanned image) → returns extraction_error with guidance to use OCR."
+          }
+        },
+        "confidence": "medium",
+        "assumptions": [
+          "CVs are machine-readable PDFs (not scanned images) in v1",
+          "Proficiency classification accuracy does not require human review in v1"
+        ],
+        "discovery_anchors": [
+          { "field": "desired_outcome", "excerpt": "uploads a CV PDF" },
+          { "field": "desired_outcome", "excerpt": "proficiency level (beginner/intermediate/expert)" },
+          { "field": "desired_outcome", "excerpt": "grounded in a quoted CV sentence" }
+        ],
+        "model_used": "sonnet"
+      }
+    },
+    {
+      "candidate_id": "c2",
+      "model": "opus",
+      "design_context_override": "minimize new abstractions — reuse existing patterns",
+      "b1_output": {
+        "agreed_solution_description": "Reuse the existing FastAPI backend. Add a /skills-matrix endpoint that accepts PDF bytes, extracts text, and calls Claude Opus with a structured skills schema. The frontend adds a new tab to the existing BMC canvas with the skills matrix table.",
+        "architecture_decisions": [
+          {
+            "area": "extraction endpoint",
+            "choice": "New /skills-matrix route in the existing FastAPI app",
+            "rationale": "Avoids a second service. Reuses existing Claude client configuration and error handling.",
+            "discovery_anchor": "structured skills matrix"
+          }
+        ],
+        "ux_decisions": [
+          {
+            "area": "placement",
+            "choice": "New tab in existing canvas UI",
+            "rationale": "Keeps the recruiter in one tool.",
+            "discovery_anchor": "A recruiter uploads a CV PDF"
+          }
+        ],
+        "cockburn_gate_results": {
+          "abstraction_test": {
+            "passed": true,
+            "reasoning": "SkillsMatrixEndpoint and SkillsMatrixTab are role-clear names."
+          },
+          "responsibility_alignment_test": {
+            "passed": false,
+            "reasoning": "The endpoint is handling both extraction and classification — two distinct responsibilities. A future change to the extraction library would also touch the classification logic inside the same function."
+          },
+          "evolution_test": {
+            "notes": "Splitting extraction from classification later would require refactoring the endpoint. The folded responsibility is a known tech debt assumption."
+          },
+          "communications_patterns_test": {
+            "notes": "One-way per request. No cycles."
+          },
+          "data_connectedness_test": {
+            "notes": "Endpoint receives PDF bytes. Has all it needs."
+          },
+          "data_variations_test": {
+            "notes": "Same as c1 but with an additional assumption: the existing BMC canvas frontend is stable enough to add a tab without regressions."
+          }
+        },
+        "confidence": "medium",
+        "assumptions": [
+          "The existing BMC canvas frontend is stable enough to add a tab",
+          "CVs are machine-readable PDFs in v1",
+          "Extraction and classification can be folded into one function without maintainability issues"
+        ],
+        "discovery_anchors": [
+          { "field": "desired_outcome", "excerpt": "structured skills matrix" },
+          { "field": "desired_outcome", "excerpt": "proficiency level (beginner/intermediate/expert)" }
+        ],
+        "model_used": "opus"
+      }
+    }
+  ]
+}

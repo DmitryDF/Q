@@ -25,7 +25,7 @@ port automatically is the enforcement: the gates are hook registrations, and hoo
 config is proprietary per vendor. On Claude Code you get the methodology and the
 gates. Elsewhere you get the methodology, and the gates need an adapter.
 
-As of today the set ships **12 skills** for getting a bounded next move, stress-testing an idea, independent verification, framing work before you start it, session orientation, turning a solution into an outcome, choosing a metric that holds up, evidence-based research, turning a raw idea into a contract, carrying work across sessions, designing one candidate solution, and cutting work into delivery slices. More are
+As of today the set ships **13 skills** for getting a bounded next move, stress-testing an idea, independent verification, framing work before you start it, session orientation, turning a solution into an outcome, choosing a metric that holds up, evidence-based research, turning a raw idea into a contract, carrying work across sessions, designing one candidate solution, cutting work into delivery slices, and designing against a contract. More are
 coming for vibecoding. Soon.
 
 **One honest caveat.** Some of this may behave differently on your machine than on
@@ -72,15 +72,16 @@ hard-fails if it names a different one.
 - `/prompt-for-handoff` — a verified session-continuity prompt.
 - `/solution-designer` — designs one candidate solution from a locked Discovery.
 - `/solution-slicer` — assesses whether a plan needs delivery slices, and proposes them.
+- `/solution-design` — N parallel candidates, verified ranking, coverage gate, slicing.
 
 **Where the four ClaSPEL phases stand in this release:**
 
 - **Clarification** (`/clarification`) — shipped
-- **Solution-design** (`/solution-design`) — not yet
+- **Solution-design** (`/solution-design`) — shipped
 - **Plan** (`/plan`) — not yet
 - **Execution** (`/execute-plan`) — not yet
 
-12 of 21 skills are here so far. The phases marked *not yet* land in later pushes — this README is generated from what is actually in the tree, so it will not describe a skill before it exists.
+13 of 21 skills are here so far. The phases marked *not yet* land in later pushes — this README is generated from what is actually in the tree, so it will not describe a skill before it exists.
 
 ## Layout
 
