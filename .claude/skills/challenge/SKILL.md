@@ -55,7 +55,7 @@ replacement for the authored count. Resolve it at dispatch, passing the mode's
 authored number:
 
 ```bash
-python3 ${KIT_HOOKS_DIR}/rigor.py cap 2
+python3 ~/.claude/hooks/rigor.py cap 2
 ```
 
 At `thorough` and `standard` both modes get their authored count; at `light` and
@@ -85,7 +85,7 @@ Resolve the artifact path (bookkeeping-model audit-trail rule — drafts live un
 the owning slug when a topic is bound, else the legacy adhoc location):
 
 ```
-python3 ${KIT_HOOKS_DIR}/bound_topic.py draft-path <SESSION_ID> CHALLENGE
+python3 ~/.claude/hooks/bound_topic.py draft-path <SESSION_ID> CHALLENGE
 ```
 
 This prints `<project>/Thoughts/<slug>-<ts>_CHALLENGE_<sid8>.md` when a topic is

@@ -2405,7 +2405,7 @@ def adopt_legacy_markers(cycle_dir, *, adopt_file=None, supersede_reason=None,
             return _refuse(
                 f"{sentinel_file} still exists, so its fact-check can be re-run — "
                 "set-aside is only for a sentinel whose research file is gone. "
-                "Re-run it instead: python3 ${KIT_HOOKS_DIR}/pre_plan_gates.py "
+                "Re-run it instead: python3 ~/.claude/hooks/pre_plan_gates.py "
                 "factcheck-research <session-id> " + str(sentinel_file))
         planned = [{"from": str(sentinel), "to": f"{sentinel}.bak-<ts>"}]
         if not apply:

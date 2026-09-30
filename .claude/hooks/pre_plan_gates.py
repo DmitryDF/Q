@@ -8558,6 +8558,14 @@ def main():
             # exists, id is known to the ledger) that belongs to a later
             # slice, not yet built — not a model-judgment one this checker
             # can discharge from the file alone.
+            #
+            # FIXER item 7 (S6 round-3 review): the `Projects` repo's own
+            # `.claude/rules/claims-registry.md` still describes the RETIRED
+            # hand-written register procedure this addendum supersedes (a
+            # Source Index, `R1…` ids, grep-unique locators, a hand-set
+            # `status` column) — it was never updated when this codebase
+            # moved the register to a code-only writer. Reconciling that
+            # rule with the current shape is a follow-up, not S6.
             _claims_addendum = (
                 "Do not assess any _CLAIMS.md file alongside the research "
                 "file. The claims register is written by code, not by the "
