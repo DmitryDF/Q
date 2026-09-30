@@ -1,0 +1,8 @@
+{
+  "guiding_policy": "The user must be able to set up a new tracked habit in under two minutes without reading documentation. Defaults are aggressively opinionated; advanced options are hidden behind a single 'more' affordance.",
+  "desired_outcome": "After this ships, a first-time user can open the habit-tracker, name a habit, and confirm a daily cadence in three taps. The user observes that the first screen contains exactly the choices needed to begin, and no others.",
+  "desired_solution": "A first-run wizard with three steps: name, cadence (daily / weekly / custom), reminder window (morning / evening / none). 'More options' on each step reveals advanced controls (custom recurrence, multiple reminders, tags). Save is implicit on the last step; no submit button.",
+  "metrics": "OMTM: setup-completion rate within first session ≥0.7 (rolling 30-day cohort, vs prior baseline of 0.4). Secondary: median time-to-first-habit ≤120s. Decision rule: if completion rate <0.7 for 2 consecutive cohorts, restructure the wizard step ordering.",
+  "discovery_src_hash": "12abf34c5d6e",
+  "model": "opus"
+}

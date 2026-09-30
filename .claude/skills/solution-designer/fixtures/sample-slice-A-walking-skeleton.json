@@ -1,0 +1,8 @@
+{
+  "guiding_policy": "Move all phase-transition authority into deterministic code so that the AI cannot silently skip a gate. A new phase-state authority owns sequence + completeness checks; the AI's role shrinks to producing the artifacts each phase requires.",
+  "desired_outcome": "After this slice ships, a session that enters a phase cannot leave it without the deterministic predicate confirming completion. The user observes that the active phase is always visible and that forward transitions require an explicit token the AI cannot self-mint.",
+  "desired_solution": "Add `PHASE_SEQUENCE` + per-phase predicates to `pre_plan_gates.py`; expose `phase-start`, `phase-stop`, `phase-status`, `phase-complete` subcommands. Add a Stop-hook backstop that refuses to end a session while a phase is open but incomplete. Phase tokens are user-authorised so the AI cannot fabricate them.",
+  "metrics": "OMTM: phase-completeness predicate pass rate = 1.0 by construction (code-enforced; line in sand 1.0). Secondary: forward-transition token presence rate = 1.0. Decision rule: any non-1.0 value is a code bug; fix and re-test.",
+  "discovery_src_hash": "abc123def456",
+  "model": "sonnet"
+}

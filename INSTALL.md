@@ -17,7 +17,7 @@ install writes, and nothing else:
 Nothing is deleted. Nothing is overwritten without being backed up. If your agent
 proposes anything outside that table, it has gone off-script — stop it.
 
-**This release ships 10 of 21 planned skills.** Everything described below is present in this tree; nothing here documents a skill that has not shipped yet.
+**This release ships 11 of 21 planned skills.** Everything described below is present in this tree; nothing here documents a skill that has not shipped yet.
 
 ---
 
@@ -196,7 +196,7 @@ Do not report success for a step you skipped.
 
 Try the smallest loop first: ask your agent something, then run `/recommend` on its answer.
 
-Available in this release: `/recommend`, `/challenge`, `/double-check`, `/work-frame-and-create-todo`, `/session-start`, `/outcome-framing`, `/lean-analytics-metrics`, `/research`, `/clarification`, `/prompt-for-handoff`.
+Available in this release: `/recommend`, `/challenge`, `/double-check`, `/work-frame-and-create-todo`, `/session-start`, `/outcome-framing`, `/lean-analytics-metrics`, `/research`, `/clarification`, `/prompt-for-handoff`, `/solution-designer`.
 
 ---
 

@@ -1,0 +1,8 @@
+{
+  "guiding_policy": "Code owns the routing decisions for TODO management; AI text never decides which bucket an item belongs to. Validators are deterministic regexes; framing checks fail closed.",
+  "desired_outcome": "After this slice ships, every `[Thought]`-tagged TODO item entering the system passes a framing validator that runs in code. The user sees a validator error inline if framing is broken, and does not see silently-malformed items downstream.",
+  "desired_solution": "Add `validate-framing` subcommand to `todo.py` (6 regex checks). Add `--validate-framing` flag on `todo.py add` and a `--phase` flag that suppresses writes during specific phases. Add `reframe --supersede`, `mark-in-progress`, `audit-coverage` subcommands. All checks deterministic; no AI in the validator path.",
+  "metrics": "OMTM: framing-validator pass rate on `[Thought]`-tagged items = 1.0 (code-enforced; line in sand 1.0). Secondary: percentage of `[Thought]` items with a linked plan file ≥0.95. Decision rule: revise validator regex or add new check on any miss.",
+  "discovery_src_hash": "fed987cba654",
+  "model": "sonnet"
+}
