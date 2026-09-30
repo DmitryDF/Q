@@ -110,42 +110,48 @@ jobs:
             echo "rigor.py not in this release yet — skipping"
           fi
 
-      - name: Leak gate — author identity and private strings
+      - name: Leak gate — private strings in the tree AND the whole history
+        env:
+          # The terms are a repository secret, never literals in this file: a gate
+          # that lists the names it guards publishes them. One `<kind> <regex>` per
+          # line; kinds `private` (case-sensitive), `private-i`, `author-i` (the
+          # author's own identifiers, allowed only on the attribution surfaces).
+          Q_LEAK_TERMS: ${{ secrets.Q_LEAK_TERMS }}
         run: |
-          # Narrowed per P0.16: `/Users/` alone matches GENERIC regexes inside guard
-          # code that expose nobody, and a gate that can never go green gets disabled.
-          #
-          # TWO EXCLUSION SETS, for two different reasons:
-          #
-          #   attribution surfaces  README / NOTICES / LICENSE / INSTALL may name the
-          #                         author — NOTICES exists to say "original work by
-          #                         <author>". They may NOT name private projects, so
-          #                         they are excluded only from the identity grep.
-          #
-          #   gate files            A FILE WHOSE JOB IS TO DETECT A STRING MUST
-          #                         CONTAIN THAT STRING. This workflow carries the
-          #                         patterns it greps for; verify_kit.py describes its
-          #                         own author-token check. Both are excluded from all
-          #                         three greps, or the gate can never pass.
-          #
-          # The authority for this list is LEAK_ALLOWLIST in the release tool's
-          # q_git.py. These two implementations can drift; if you change one, change
-          # the other. (Known duplication — the tool is not shipped in this kit.)
-          GATE_FILES=(--exclude=verify.yml --exclude=verify_kit.py)
-          ATTRIB=(--exclude=README.md --exclude=NOTICES.md
-                  --exclude=LICENSE --exclude=INSTALL.md)
+          # No terms = refuse. A leak gate with an empty pattern passes every tree.
+          if [ -z "$Q_LEAK_TERMS" ]; then
+            echo "::error::secret Q_LEAK_TERMS is not set — the leak gate will not pass without it"
+            exit 1
+          fi
+          printf '%s\n' "$Q_LEAK_TERMS" > "$RUNNER_TEMP/terms.txt"
+          pat() { grep -E "^$1 " "$RUNNER_TEMP/terms.txt" | cut -d' ' -f2- | paste -sd'|' -; }
+          CS="$(pat private)"; CI="$(pat private-i)"; AU="$(pat author-i)"
+          if [ -z "$CS$CI" ]; then
+            echo "::error::Q_LEAK_TERMS defines no private terms"; exit 1
+          fi
+          # README / NOTICES / LICENSE / INSTALL may name the author (NOTICES exists
+          # to say "original work by <author>"); verify_kit.py names the author in
+          # its own generic check. None of them may name a private project.
+          ATTRIB=(--exclude=README.md --exclude=NOTICES.md --exclude=LICENSE
+                  --exclude=INSTALL.md --exclude=verify_kit.py)
           fail=0
-          if grep -rniE --exclude-dir=.git "${GATE_FILES[@]}" \
-               '/Users/<you>|private_project|chezmoi|private_script|private_source' . ; then
-            echo "::error::private strings found"; fail=1
+          if [ -n "$CS" ] && grep -rnE --exclude-dir=.git "$CS" . ; then
+            echo "::error::private names in the tree"; fail=1
           fi
-          if grep -rnE --exclude-dir=.git "${GATE_FILES[@]}" \
-               'Knowledge_Base|\bExampleCo\b|EMPLOYER/|config-repo' . ; then
-            echo "::error::private directory names found"; fail=1
+          if [ -n "$CI" ] && grep -rniE --exclude-dir=.git "$CI" . ; then
+            echo "::error::private strings in the tree"; fail=1
           fi
-          if grep -rniE --exclude-dir=.git "${GATE_FILES[@]}" "${ATTRIB[@]}" \
-               '\bmitya\b|\bfrikh|DmitryDF' . ; then
+          if [ -n "$AU" ] && grep -rniE --exclude-dir=.git "${ATTRIB[@]}" "$AU" . ; then
             echo "::error::author identifiers outside the attribution surfaces"; fail=1
+          fi
+          # History too: a name removed from the tree is still public in an old
+          # commit. Diffs and commit messages, every ref.
+          git log --all -p --no-color --format='%B' > "$RUNNER_TEMP/history.txt"
+          if [ -n "$CS" ] && grep -qE "$CS" "$RUNNER_TEMP/history.txt"; then
+            echo "::error::private names in git history"; fail=1
+          fi
+          if [ -n "$CI" ] && grep -qiE "$CI" "$RUNNER_TEMP/history.txt"; then
+            echo "::error::private strings in git history"; fail=1
           fi
           exit $fail
 
@@ -194,7 +200,7 @@ jobs:
           # run commands only the author has. The build generalises them; this refuses
           # a tree where one came back.
           if grep -rnE --exclude-dir=.git --exclude=verify.yml --exclude=verify_kit.py \
-               'claude-promote|claude-verify|claude-experiment|claude-divergence-check|chezmoi' . ; then
+               'claude-promote|claude-verify|claude-experiment|claude-divergence-check' . ; then
             echo "::error::a shipped file names deploy tooling that is not in this release"
             exit 1
           fi

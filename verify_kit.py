@@ -4,7 +4,8 @@
 Checks (all run before reporting, fail-fast ordering for display):
   1. File presence: every file in kit.manifest.json exists.
   2. Executable: all .sh/.py hooks are executable.
-  3. Author token leak: zero matches for /Users/<name>|iCloud~md~obsidian|private_project|Frikh-Khar.
+  3. Author token leak: zero matches for /Users/<name>|Frikh-Khar, plus any private
+     terms in the file named by Q_LEAK_TERMS_FILE.
   4. Kit structure: kit.manifest.json and .gitignore present.
   5. Git cleanliness: git init + git add -A shows no untracked (??) files.
   6. Dep closure: every resolved bundle's deps are also in resolved_bundles.
@@ -42,10 +43,26 @@ BUNDLES_YAML = SKILL_DIR / "bundles.yaml"
 
 AUTHOR_TOKEN_RE = re.compile(
     r"/Users/[A-Z][^/\s\n\"']{2,}"  # /Users/<AnyName>
-    r"|private_project"
     r"|Frikh-Khar"
-    r"|(?<!\[)EMPLOYER/"  # employer folder name (not inside a [...] placeholder)
 )
+# Private project/employer names are deliberately NOT listed here: this file ships,
+# and a list in it publishes the names it guards. They come from a private file
+# named by Q_LEAK_TERMS_FILE (lines `<kind> <regex>`; kinds `private` and
+# `private-i` are used here). Unset = the generic check above only.
+
+
+def _private_term_res() -> list[re.Pattern]:
+    path = os.environ.get("Q_LEAK_TERMS_FILE")
+    if not path or not Path(path).is_file():
+        return []
+    out = []
+    for raw in Path(path).read_text(encoding="utf-8").splitlines():
+        kind, _, rx = raw.strip().partition(" ")
+        if kind == "private" and rx:
+            out.append(re.compile(rx))
+        elif kind == "private-i" and rx:
+            out.append(re.compile(rx, re.IGNORECASE))
+    return out
 # `iCloud~md~obsidian` was in this pattern and has been removed: it is Obsidian's
 # own iCloud container name, identical for every Obsidian user on macOS, so it
 # identifies the APPLICATION and not a person. Flagging it produced two findings
@@ -60,11 +77,10 @@ AUTHOR_TOKEN_RE = re.compile(
 #                         say "original work by <author>". They are excluded from
 #                         the author-name check only.
 #
-#   GATE_FILES            A FILE WHOSE JOB IS TO DETECT A STRING MUST CONTAIN THAT
-#                         STRING. This script carries the patterns it greps for, and
-#                         so does the CI workflow. Excluded entirely, or neither can
-#                         ever pass. (Fifth instance of this class in this release;
-#                         it is written out here so the sixth is recognised faster.)
+#   GATE_FILES            This script names the author in its own generic check.
+#                         (The CI workflow no longer carries private patterns — it
+#                         reads them from a secret — but stays listed because it
+#                         mentions the check's own wording.)
 ATTRIBUTION_SURFACES = frozenset({"LICENSE", "NOTICES.md", "README.md", "INSTALL.md"})
 GATE_FILES = frozenset({"verify_kit.py", ".github/workflows/verify.yml", ".gitleaks.toml"})
 
@@ -104,6 +120,7 @@ def check_executability(kit: Path, manifest: dict) -> list[str]:
 
 def check_author_tokens(kit: Path) -> list[str]:
     failures = []
+    private = _private_term_res()
     for path in sorted(kit.rglob("*")):
         if not path.is_file():
             continue
@@ -120,6 +137,9 @@ def check_author_tokens(kit: Path) -> list[str]:
         if rel in GATE_FILES:
             continue
         for i, line in enumerate(text.splitlines(), 1):
+            if any(r.search(line) for r in private):
+                failures.append(f"PRIVATE-TERM {rel}:{i}: {line.strip()[:80]}")
+                continue
             if not AUTHOR_TOKEN_RE.search(line):
                 continue
             if rel in ATTRIBUTION_SURFACES and "Frikh-Khar" in line:
