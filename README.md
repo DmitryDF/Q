@@ -107,6 +107,15 @@ Every phase above ships in this repo.
 
 ---
 
+## How work stays tracked
+
+Every topic gets a slug. Every artifact of that topic carries the same slug, so `grep <slug> Thoughts/*` returns the whole family at once — the spine, the research, the design, the plan, the verification records. A hook checks that shape after every save and refuses the write when a link is broken, printing the exact fix rather than repairing the file itself.
+
+![The bookkeeping model: TODO.md's buckets, the flat Thoughts graph, one slug family with its spine and artifacts, and the checker that validates the shape after every save](docs/bookkeeping-model.png)
+
+---
+
+
 ## Installing
 
 ```bash
