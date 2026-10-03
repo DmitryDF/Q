@@ -208,8 +208,11 @@ python3 ${KIT_HOOKS_DIR}/pre_plan_gates.py handoff-freshness <target_file>
       then a separator line, then the target file's contents (blob leads so the
       checker weighs the tracking state; the target content preserves the
       coherence-with-explicit-ask check).
-   c. Invoke `/double-check --against <absolute path of AGAINST>` on the
-      candidate prompt. The ground-truth lets the checker flag a handoff that
+   c. Invoke `/double-check --class gate --against <absolute path of AGAINST>` on
+      the candidate prompt. The class is `gate` rather than `check` because the
+      verdict BLOCKS — `write-next-session-prompt` refuses to write the section
+      without a PASS — and passing a class rather than counts is what lets the
+      operator's rigor tier reach this dispatch at all. The ground-truth lets the checker flag a handoff that
       **re-targets an already-SHIPPED slice or violates plan ordering** — not
       just internal consistency. Note the artifact path `/double-check` writes
       (call it `DC_ARTIFACT`) and its chat verdict.
